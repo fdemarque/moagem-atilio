@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#052e16"/>
+    </linearGradient>
+    <linearGradient id="sackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+  
+  <!-- Outer glowing accent ring -->
+  <rect x="20" y="20" width="472" height="472" rx="95" fill="none" stroke="#22c55e" stroke-width="8" opacity="0.4"/>
+
+  <!-- Sack / Bag Illustration -->
+  <g transform="translate(40, 25)">
+    <!-- Sack Tie -->
+    <ellipse cx="216" cy="140" rx="36" ry="16" fill="#78350f" />
+    <path d="M190,135 Q216,110 242,135 Q230,85 216,90 Q202,85 190,135 Z" fill="#d97706" />
+
+    <!-- Sack Body -->
+    <path d="M180,145 C110,170 100,280 110,380 C115,400 135,415 170,415 L262,415 C297,415 317,400 322,380 C332,280 322,170 252,145 Z" fill="url(#sackGrad)" />
+    
+    <!-- Sack Texture lines -->
+    <path d="M140,240 Q216,260 292,240" stroke="#78350f" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.5"/>
+    <path d="M130,310 Q216,330 302,310" stroke="#78350f" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.5"/>
+    
+    <!-- Letter M / A Stamp -->
+    <circle cx="216" cy="300" r="42" fill="#166534" />
+    <text x="216" y="315" font-family="Arial, sans-serif" font-weight="900" font-size="44" fill="#ffffff" text-anchor="middle">A</text>
+  </g>
+</svg>
