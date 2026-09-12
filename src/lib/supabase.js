@@ -98,6 +98,64 @@ export async function registrarMovimentacao({ cliente, tipo_movimentacao, tipo_s
 }
 
 /**
+ * Atualiza uma movimentação existente
+ */
+export async function atualizarMovimentacao(id, { tipo_movimentacao, tipo_sacaria, quantidade, data_movimentacao, documentos }) {
+  const { data, error } = await supabase
+    .from('movimentacoes_sacaria')
+    .update({
+      tipo_movimentacao,
+      tipo_sacaria,
+      quantidade: parseInt(quantidade, 10),
+      data_movimentacao,
+      documentos: documentos || []
+    })
+    .eq('id', id)
+    .select();
+
+  if (error) {
+    console.error('Erro ao atualizar movimentação:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Exclui uma movimentação e opcionalmente remove seus comprovantes do storage
+ */
+export async function deletarMovimentacao(id, documentos = []) {
+  if (Array.isArray(documentos) && documentos.length > 0) {
+    try {
+      const pathsParaRemover = documentos
+        .map(url => {
+          const match = url.match(/\/comprovantes\/(.+)$/);
+          return match ? match[1] : null;
+        })
+        .filter(Boolean);
+
+      if (pathsParaRemover.length > 0) {
+        await supabase.storage.from('comprovantes').remove(pathsParaRemover);
+      }
+    } catch (storageErr) {
+      console.warn('Erro ao limpar arquivos do storage (não impeditivo):', storageErr);
+    }
+  }
+
+  const { error } = await supabase
+    .from('movimentacoes_sacaria')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao excluir movimentação:', error);
+    throw error;
+  }
+
+  return true;
+}
+
+/**
  * Busca todos os clientes distintos e consolida saldo de sacarias
  */
 export async function buscarClientesComResumo() {
