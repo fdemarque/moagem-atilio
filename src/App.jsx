@@ -67,7 +67,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-white text-black flex flex-col">
       {/* Top Header */}
       <Header
         usuario={usuarioLogado.usuario}
@@ -75,7 +75,7 @@ export default function App() {
       />
 
       {/* Main Screen Content */}
-      <main className="flex-1">
+      <main className="flex-1 bg-white">
         {telaAtiva === 'clientes' ? (
           <Clientes
             onSelectCliente={handleSelectCliente}
@@ -112,7 +112,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMensagem && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-green-600 text-white font-bold text-sm shadow-2xl shadow-green-950/80 border border-green-400/40 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3.5 rounded-xl bg-emerald-800 text-white font-black text-base shadow-2xl border-2 border-emerald-950 animate-in fade-in slide-in-from-bottom-4">
           {toastMensagem}
         </div>
       )}

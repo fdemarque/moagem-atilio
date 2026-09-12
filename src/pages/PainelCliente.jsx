@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
-  ArrowDownLeft,
-  ArrowUpRight,
+  ArrowDown,
+  ArrowUp,
   Printer,
   Share2,
   ChevronLeft,
@@ -182,23 +182,23 @@ Total de movimentações no mês: ${movimentacoes.length}`;
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-3 pb-safe space-y-4">
+    <div className="max-w-2xl mx-auto px-4 py-3 pb-safe space-y-4 bg-white text-black min-h-[calc(100vh-65px)]">
 
       {/* Cabeçalho do Cliente com Botão Voltar */}
       <div className="flex items-center justify-between no-print pt-1">
         <div className="flex items-center gap-2.5">
           <button
             onClick={onVoltar}
-            className="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white touch-btn shadow-md"
+            className="p-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border-2 border-slate-400 text-black touch-btn shadow-sm"
             title="Voltar aos clientes"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-6 h-6 stroke-[3]" />
           </button>
           <div>
-            <span className="text-xs font-bold text-green-400 uppercase tracking-wider block">
+            <span className="text-xs font-black text-emerald-800 uppercase tracking-wider block">
               Painel do Cliente
             </span>
-            <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-black leading-tight">
               {cliente}
             </h1>
           </div>
@@ -206,38 +206,38 @@ Total de movimentações no mês: ${movimentacoes.length}`;
 
         <button
           onClick={carregarMovimentacoes}
-          className="p-2.5 rounded-2xl bg-slate-800 text-slate-400 hover:text-white touch-btn shadow-md"
+          className="p-3 rounded-xl bg-slate-100 hover:bg-slate-200 border-2 border-slate-400 text-black touch-btn shadow-sm"
           title="Recarregar dados"
         >
-          <RefreshCw className={`w-5 h-5 ${carregando ? 'animate-spin text-green-400' : ''}`} />
+          <RefreshCw className={`w-5 h-5 text-emerald-800 stroke-[2.5] ${carregando ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Ações Principais: Botões Grandes para Entrada e Saída (Zero Inglês, Touch Amplo) */}
+      {/* Botões de Ação Superior: [↓ REGISTRAR ENTRADA] e [↑ REGISTRAR SAÍDA] (WCAG AAA) */}
       <div className="grid grid-cols-2 gap-3 no-print">
 
-        {/* Botão Verde [+ REGISTRAR ENTRADA] */}
+        {/* Botão Verde Profundo [↓ REGISTRAR ENTRADA] (Base #15803D) */}
         <button
           onClick={() => abrirModalNovaMovimentacao('IN')}
-          className="h-20 sm:h-22 rounded-2xl bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 active:from-green-700 active:to-green-800 text-white font-black flex flex-col items-center justify-center p-2 shadow-xl shadow-green-950/70 border-2 border-green-400/30 touch-btn transition-transform active:scale-[0.98]"
+          className="min-h-[58px] sm:h-20 rounded-xl bg-[#15803D] hover:bg-emerald-800 active:bg-emerald-900 text-white font-black flex flex-col items-center justify-center p-3 shadow-md border-2 border-emerald-900 touch-btn transition-transform active:scale-[0.98]"
         >
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <ArrowDownLeft className="w-6 h-6 stroke-[3]" />
+          <div className="flex items-center gap-2">
+            <ArrowDown className="w-6 h-6 stroke-[3]" />
             <span className="text-sm sm:text-base md:text-lg tracking-wide text-center leading-tight">
-              + REGISTRAR ENTRADA
+              ↓ REGISTRAR ENTRADA
             </span>
           </div>
         </button>
 
-        {/* Botão Vermelho [- REGISTRAR SAÍDA] */}
+        {/* Botão Vermelho Rubi Profundo [↑ REGISTRAR SAÍDA] (Base #B91C1C) */}
         <button
           onClick={() => abrirModalNovaMovimentacao('OUT')}
-          className="h-20 sm:h-22 rounded-2xl bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:from-red-700 active:to-red-800 text-white font-black flex flex-col items-center justify-center p-2 shadow-xl shadow-red-950/70 border-2 border-red-400/30 touch-btn transition-transform active:scale-[0.98]"
+          className="min-h-[58px] sm:h-20 rounded-xl bg-[#B91C1C] hover:bg-red-800 active:bg-red-900 text-white font-black flex flex-col items-center justify-center p-3 shadow-md border-2 border-red-900 touch-btn transition-transform active:scale-[0.98]"
         >
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <ArrowUpRight className="w-6 h-6 stroke-[3]" />
+          <div className="flex items-center gap-2">
+            <ArrowUp className="w-6 h-6 stroke-[3]" />
             <span className="text-sm sm:text-base md:text-lg tracking-wide text-center leading-tight">
-              - REGISTRAR SAÍDA
+              ↑ REGISTRAR SAÍDA
             </span>
           </div>
         </button>
@@ -245,50 +245,50 @@ Total de movimentações no mês: ${movimentacoes.length}`;
       </div>
 
       {/* Filtro Mensal e Navegação de Data */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-md no-print">
+      <div className="bg-white border-2 border-slate-300 rounded-xl p-3 shadow-sm no-print">
         <div className="flex items-center justify-between">
           <button
             onClick={irParaMesAnterior}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 touch-btn"
+            className="p-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-black touch-btn"
             title="Mês anterior"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-6 h-6 stroke-[3]" />
           </button>
 
           <div className="flex items-center gap-2 text-center">
-            <Calendar className="w-4 h-4 text-green-400" />
-            <span className="text-base sm:text-lg font-black text-white">
+            <Calendar className="w-5 h-5 text-emerald-800 stroke-[2.5]" />
+            <span className="text-lg sm:text-xl font-black text-black">
               {MESES[mesSelecionado - 1]} / {anoSelecionado}
             </span>
           </div>
 
           <button
             onClick={irParaMesProximo}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 touch-btn"
+            className="p-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-black touch-btn"
             title="Próximo mês"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-6 h-6 stroke-[3]" />
           </button>
         </div>
       </div>
 
       {/* Mensagem de Feedback Temporária */}
       {feedbackAcao && (
-        <div className="p-3.5 bg-green-950/90 border-2 border-green-700 text-green-200 text-sm font-bold rounded-2xl flex items-center gap-2.5 shadow-lg no-print animate-in fade-in">
-          <Check className="w-5 h-5 text-green-400 stroke-[3]" />
+        <div className="p-3.5 bg-emerald-100 border-2 border-emerald-800 text-emerald-950 text-sm font-black rounded-xl flex items-center gap-2.5 shadow-sm no-print animate-in fade-in">
+          <Check className="w-5 h-5 text-emerald-800 stroke-[3]" />
           <span>{feedbackAcao}</span>
         </div>
       )}
 
       {/* Mensagem de Erro se houver */}
       {erro && (
-        <div className="p-3.5 bg-red-950/90 border-2 border-red-800 text-red-200 text-sm font-bold rounded-2xl flex items-center gap-2.5 shadow-lg no-print">
-          <AlertTriangle className="w-5 h-5 text-red-400 stroke-[2.5]" />
+        <div className="p-3.5 bg-red-100 border-2 border-red-800 text-red-950 text-sm font-black rounded-xl flex items-center gap-2.5 shadow-sm no-print">
+          <AlertTriangle className="w-5 h-5 text-red-800 stroke-[2.5]" />
           <span>{erro}</span>
         </div>
       )}
 
-      {/* Relatório para Impressão (Apenas na impressão física) */}
+      {/* Relatório para Impressão */}
       <div className="hidden print:block mb-4">
         <div className="border-b-2 border-black pb-2 mb-4">
           <h1 className="text-2xl font-black text-black">Moagem Atílio - Relatório de Sacarias</h1>
@@ -297,34 +297,34 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         </div>
       </div>
 
-      {/* Lista de Movimentações com Edição no Toque e Exclusão no Ícone da Lixeira */}
+      {/* Lista de Movimentações (Cartões com Fundo Branco e Borda Sólida Cinza Escura) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
             Movimentações do Período ({movimentacoes.length})
           </h3>
-          <span className="text-[11px] text-slate-500 font-semibold no-print">
-            Toque para editar
+          <span className="text-xs text-slate-700 font-bold no-print">
+            Toque no cartão para editar
           </span>
         </div>
 
         {carregando ? (
           <div className="space-y-3">
             {[1, 2, 3].map(n => (
-              <div key={n} className="h-20 rounded-2xl bg-slate-800/50 animate-pulse border border-slate-800" />
+              <div key={n} className="h-20 rounded-xl bg-slate-100 animate-pulse border-2 border-slate-300" />
             ))}
           </div>
         ) : movimentacoes.length === 0 ? (
-          <div className="text-center py-10 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl">
-            <p className="text-slate-300 text-base font-bold">
+          <div className="text-center py-10 px-4 bg-slate-50 border-2 border-dashed border-slate-400 rounded-2xl">
+            <p className="text-black text-base font-black">
               Nenhuma movimentação em {MESES[mesSelecionado - 1]}/{anoSelecionado}.
             </p>
-            <p className="text-xs text-slate-500 mt-1">
-              Use os botões verdes ou vermelhos acima para registrar.
+            <p className="text-xs text-slate-700 mt-1 font-semibold">
+              Use os botões verde ou vermelho acima para registrar.
             </p>
           </div>
         ) : (
-          /* Espaçamento generoso entre cartões para evitar toques acidentais */
+          /* Espaçamento generoso entre cartões */
           <div className="space-y-3.5 sm:space-y-4">
             {movimentacoes.map((mov) => {
               const isOut = mov.tipo_movimentacao === 'OUT';
@@ -334,44 +334,42 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                 <div
                   key={mov.id}
                   onClick={() => abrirModalEdicao(mov)}
-                  className="group relative bg-slate-900 hover:bg-slate-850 active:bg-slate-800 border-2 border-slate-800 hover:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-md transition-all cursor-pointer touch-btn"
+                  className="group relative bg-white hover:bg-slate-50 active:bg-slate-100 border-2 border-slate-300 hover:border-slate-500 rounded-xl p-4 flex items-center justify-between shadow-sm transition-all cursor-pointer touch-btn"
                   title="Toque para editar este registro"
                 >
-                  {/* Tipo em Português Claro e Quantidade */}
+                  {/* Tipo com Badge Visual Duplo e Quantidade em Destaque Preto Gigante */}
                   <div className="flex items-center gap-3.5">
-                    {/* Badge ENTRADA (Verde) / SAÍDA (Vermelho) com Zero Inglês */}
-                    <div className={`px-2.5 py-2 rounded-xl flex flex-col items-center justify-center min-w-[64px] ${
+                    {/* Badge Sólida: ↓ ENTRADA ou ↑ SAÍDA */}
+                    <div className={`px-2.5 py-2 rounded-lg flex flex-col items-center justify-center min-w-[72px] border-2 ${
                       isOut
-                        ? 'bg-red-950/90 text-red-400 border border-red-800/70'
-                        : 'bg-green-950/90 text-green-400 border border-green-800/70'
+                        ? 'bg-red-50 text-[#B91C1C] border-[#B91C1C]'
+                        : 'bg-emerald-50 text-[#15803D] border-[#15803D]'
                     }`}>
-                      {isOut ? <ArrowUpRight className="w-5 h-5 stroke-[3]" /> : <ArrowDownLeft className="w-5 h-5 stroke-[3]" />}
+                      {isOut ? <ArrowUp className="w-5 h-5 stroke-[3]" /> : <ArrowDown className="w-5 h-5 stroke-[3]" />}
                       <span className="text-[11px] font-black uppercase tracking-wider">
-                        {isOut ? 'SAÍDA' : 'ENTRADA'}
+                        {isOut ? '↑ SAÍDA' : '↓ ENTRADA'}
                       </span>
                     </div>
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xl font-black text-white">
-                          {mov.quantidade} <span className="text-xs font-semibold text-slate-400">sacas</span>
+                        {/* Quantidade em Destaque Preto Gigante (WCAG AAA) */}
+                        <span className="text-2xl font-black text-black">
+                          {mov.quantidade} <span className="text-xs font-bold text-slate-700">sacas</span>
                         </span>
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase ${
-                          mov.tipo_sacaria === 'normal'
-                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                            : 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
-                        }`}>
+                        {/* Tipo de Sacaria em Badge de Contorno Nítido */}
+                        <span className="px-2 py-0.5 rounded-md text-xs font-black uppercase bg-slate-100 border-2 border-slate-400 text-black">
                           {mov.tipo_sacaria}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 font-medium">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                      <p className="text-xs text-slate-700 mt-1 flex items-center gap-1.5 font-bold">
+                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
                         <span>{formatarData(mov.data_movimentacao)}</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* Lado Direito: Anexos e Botão de Exclusão (Lixeira) */}
+                  {/* Lado Direito: Anexos e Botão de Lixeira (Mínimo 48x48px) */}
                   <div className="flex items-center gap-2.5">
                     {temDocs && (
                       <button
@@ -380,7 +378,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                           e.stopPropagation();
                           setUrlComprovanteAtivo(mov.documentos[0]);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-green-400 font-bold text-xs touch-btn"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-emerald-800 font-bold text-xs touch-btn shadow-sm"
                         title="Ver fotos anexadas"
                       >
                         <ImageIcon className="w-4 h-4" />
@@ -389,17 +387,17 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                       </button>
                     )}
 
-                    {/* Botão de Exclusão (Lixeira suave e de fácil toque) */}
+                    {/* Botão de Lixeira com Área de Toque de 48x48px (w-12 h-12) */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMovimentacaoParaExcluir(mov);
                       }}
-                      className="p-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 active:bg-red-800 text-red-400 hover:text-red-200 border border-red-800/40 touch-btn transition-colors"
+                      className="w-12 h-12 rounded-xl bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 border-2 border-red-300 hover:border-red-500 flex items-center justify-center touch-btn transition-colors shadow-sm"
                       title="Apagar este registro"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Trash2 className="w-6 h-6 stroke-[2.5]" />
                     </button>
                   </div>
                 </div>
@@ -409,22 +407,22 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         )}
       </div>
 
-      {/* Resumo Mensal - Layout Limpo e Acessível (Mobile-First conforme desenho) */}
-      <div className="bg-slate-900 border-2 border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 print-card">
+      {/* Saldo do Mês - Layout com Borda Sólida e Destaque Conforme Desenho */}
+      <div className="bg-white border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4 print-card">
         
-        {/* Mês e Ano de Referência (ex: SETEMBRO/2026) */}
+        {/* Mês e Ano de Referência */}
         <div className="text-left">
-          <span className="text-sm sm:text-base font-black tracking-wider text-slate-200 uppercase">
+          <span className="text-sm sm:text-base font-black tracking-wider text-slate-900 uppercase">
             {MESES[mesSelecionado - 1]}/{anoSelecionado}
           </span>
         </div>
 
         {/* Caixa de Destaque com Borda Laranja conforme o desenho de referência */}
-        <div className="border-2 sm:border-[3px] border-amber-500 bg-amber-500/10 rounded-2xl sm:rounded-3xl py-7 px-4 sm:py-9 sm:px-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center shadow-lg shadow-amber-950/20">
-          <span className="text-xl sm:text-2xl md:text-3xl font-black text-slate-100 tracking-wide uppercase">
+        <div className="border-3 border-amber-600 bg-amber-50 rounded-xl py-7 px-4 sm:py-8 sm:px-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center shadow-sm">
+          <span className="text-xl sm:text-2xl md:text-3xl font-black text-black tracking-wide uppercase">
             SALDO DO MÊS:
           </span>
-          <span className={`text-3xl sm:text-4xl md:text-5xl font-black ${saldoMes >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+          <span className={`text-3xl sm:text-4xl md:text-5xl font-black ${saldoMes >= 0 ? 'text-black' : 'text-red-700'}`}>
             {saldoMes}
           </span>
         </div>
@@ -433,17 +431,17 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         <div className="grid grid-cols-2 gap-3 pt-1 no-print">
           <button
             onClick={handleCompartilhar}
-            className="h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-white font-black text-base flex items-center justify-center gap-2.5 touch-btn transition-colors"
+            className="h-14 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 border-2 border-slate-400 text-black font-black text-base flex items-center justify-center gap-2.5 touch-btn transition-colors shadow-sm"
           >
-            <Share2 className="w-5 h-5 text-green-400" />
+            <Share2 className="w-5 h-5 text-emerald-800 stroke-[2.5]" />
             <span>Compartilhar</span>
           </button>
 
           <button
             onClick={() => window.print()}
-            className="h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-white font-black text-base flex items-center justify-center gap-2.5 touch-btn transition-colors"
+            className="h-14 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 border-2 border-slate-400 text-black font-black text-base flex items-center justify-center gap-2.5 touch-btn transition-colors shadow-sm"
           >
-            <Printer className="w-5 h-5 text-amber-400" />
+            <Printer className="w-5 h-5 text-amber-700 stroke-[2.5]" />
             <span>Imprimir</span>
           </button>
         </div>
@@ -463,54 +461,54 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         onSucesso={handleSucessoMovimentacao}
       />
 
-      {/* Pop-up / Modal de Confirmação de Exclusão (Simples e Direto) */}
+      {/* Pop-up de Confirmação de Exclusão (Fundo Branco, Borda Vermelha) */}
       {movimentacaoParaExcluir && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md bg-slate-900 border-2 border-red-900/60 rounded-3xl p-6 space-y-5 shadow-2xl animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-white border-3 border-red-700 rounded-2xl p-6 space-y-5 shadow-2xl animate-in zoom-in-95">
             
-            <div className="flex items-center gap-3 text-red-400">
-              <div className="w-12 h-12 rounded-2xl bg-red-950 border border-red-800 flex items-center justify-center flex-shrink-0">
-                <Trash2 className="w-6 h-6" />
+            <div className="flex items-center gap-3 text-red-700">
+              <div className="w-12 h-12 rounded-xl bg-red-100 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-6 h-6 stroke-[2.5]" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
+                <h3 className="text-xl font-black text-black leading-tight">
                   Deseja apagar este registro?
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs font-bold text-slate-700 mt-0.5">
                   Esta ação não poderá ser desfeita.
                 </p>
               </div>
             </div>
 
-            {/* Resumo do registro */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-slate-400">Operação:</span>
-                <span className={movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? 'text-green-400' : 'text-red-400'}>
-                  {movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? 'ENTRADA' : 'SAÍDA'}
+            {/* Resumo do registro com alto contraste */}
+            <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-300 space-y-1.5 text-black font-bold text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-700">Operação:</span>
+                <span className={movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? 'text-[#15803D]' : 'text-[#B91C1C]'}>
+                  {movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? '↓ ENTRADA' : '↑ SAÍDA'}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-slate-400">Quantidade:</span>
-                <span className="text-white text-base font-black">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-700">Quantidade:</span>
+                <span className="text-black text-base font-black">
                   {movimentacaoParaExcluir.quantidade} sacas ({movimentacaoParaExcluir.tipo_sacaria})
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-slate-400">Data:</span>
-                <span className="text-slate-300">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-700">Data:</span>
+                <span className="text-slate-900">
                   {formatarData(movimentacaoParaExcluir.data_movimentacao)}
                 </span>
               </div>
             </div>
 
-            {/* Dois botões grandes: Cancelar (Cinza) e Sim, Apagar (Vermelho) */}
+            {/* Dois botões grandes: Cancelar (Cinza Escuro) e Sim, Apagar (Vermelho Escuro) */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 disabled={excluindo}
                 onClick={() => setMovimentacaoParaExcluir(null)}
-                className="h-14 sm:h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-white font-black text-base touch-btn transition-colors"
+                className="h-14 sm:h-16 rounded-xl bg-slate-200 hover:bg-slate-300 active:bg-slate-400 border-2 border-slate-400 text-black font-black text-base touch-btn transition-colors"
               >
                 Cancelar
               </button>
@@ -519,13 +517,13 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                 type="button"
                 disabled={excluindo}
                 onClick={handleConfirmarExclusao}
-                className="h-14 sm:h-16 rounded-2xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-black text-base flex items-center justify-center gap-2 shadow-xl shadow-red-950/70 touch-btn transition-colors"
+                className="h-14 sm:h-16 rounded-xl bg-[#B91C1C] hover:bg-red-800 active:bg-red-900 text-white font-black text-base flex items-center justify-center gap-2 shadow-md border-2 border-red-900 touch-btn transition-colors"
               >
                 {excluindo ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-5 h-5 stroke-[2.5]" />
                     <span>Sim, Apagar</span>
                   </>
                 )}

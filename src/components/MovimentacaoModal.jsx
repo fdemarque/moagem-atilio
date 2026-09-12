@@ -7,9 +7,8 @@ import {
   Trash2,
   CheckCircle2,
   Loader2,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Plus,
+  ArrowDown,
+  ArrowUp,
   FileText
 } from 'lucide-react';
 import { uploadComprovante, registrarMovimentacao, atualizarMovimentacao } from '../lib/supabase';
@@ -27,7 +26,7 @@ export default function MovimentacaoModal({
   const ehEdicao = Boolean(movimentacaoParaEditar);
   const hoje = new Date().toISOString().split('T')[0];
 
-  const [tipoMovimentacao, setTipoMovimentacao] = useState(tipoInicial); // 'IN' ou 'OUT'
+  const [tipoMovimentacao, setTipoMovimentacao] = useState(tipoInicial); // 'IN' ou 'OUT' (definido na chamada dinâmica)
   const [tipoSacaria, setTipoSacaria] = useState('normal'); // 'normal' ou 'pequena'
   const [quantidade, setQuantidade] = useState('');
   const [dataMovimentacao, setDataMovimentacao] = useState(hoje);
@@ -59,13 +58,6 @@ export default function MovimentacaoModal({
       setErro('');
     }
   }, [isOpen, movimentacaoParaEditar, tipoInicial]);
-
-  // Adicionar quantidade rápida com botões grandes
-  const adicionarQtd = (valor) => {
-    const atual = parseInt(quantidade || '0', 10);
-    setQuantidade(String(atual + valor));
-    if (erro) setErro('');
-  };
 
   // Processa seleção de arquivos (Câmera ou Galeria)
   const handleFilesSelected = async (e) => {
@@ -157,7 +149,7 @@ export default function MovimentacaoModal({
       onClose();
     } catch (err) {
       console.error('Erro ao salvar movimentação:', err);
-      setErro('Erro ao registrar movimentação. Verifique a conexão com a internet.');
+      setErro('Erro ao registrar movimentação. Verifique a conexão.');
     } finally {
       setSalvando(false);
     }
@@ -166,26 +158,28 @@ export default function MovimentacaoModal({
   const isOut = tipoMovimentacao === 'OUT';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full sm:max-w-lg bg-slate-900 border-t sm:border border-slate-700 rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+      <div className="w-full sm:max-w-lg bg-white border-t-2 sm:border-2 border-slate-400 rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
 
-        {/* Header com destaque em Português */}
-        <div className={`px-5 py-4 border-b flex items-center justify-between ${isOut
-          ? 'bg-red-950/70 border-red-800/80 text-red-100'
-          : 'bg-green-950/70 border-green-800/80 text-green-100'
-          }`}>
+        {/* Header com destaque de Alto Contraste (Fundo Claro) */}
+        <div className={`px-5 py-4 border-b-2 flex items-center justify-between ${
+          isOut
+            ? 'bg-red-50 border-red-700 text-black'
+            : 'bg-emerald-50 border-emerald-700 text-black'
+        }`}>
           <div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${isOut ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
-                }`}>
-                {isOut ? <ArrowUpRight className="w-4 h-4 stroke-[3]" /> : <ArrowDownLeft className="w-4 h-4 stroke-[3]" />}
-                {isOut ? 'SAÍDA' : 'ENTRADA'}
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider text-white ${
+                isOut ? 'bg-[#B91C1C]' : 'bg-[#15803D]'
+              }`}>
+                {isOut ? <ArrowUp className="w-4 h-4 stroke-[3]" /> : <ArrowDown className="w-4 h-4 stroke-[3]" />}
+                {isOut ? '↑ SAÍDA' : '↓ ENTRADA'}
               </span>
-              <h2 className="text-base sm:text-lg font-black text-white truncate max-w-[200px]">
+              <h2 className="text-lg sm:text-xl font-black text-black truncate max-w-[200px]">
                 {cliente}
               </h2>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs font-bold text-slate-700 mt-1">
               {ehEdicao
                 ? 'Editar registro de sacarias'
                 : isOut
@@ -197,83 +191,53 @@ export default function MovimentacaoModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2.5 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 touch-btn"
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 text-black border-2 border-slate-300 touch-btn shadow-sm"
             title="Fechar formulário"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
         {/* Formulário com Scroll */}
-        <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-y-auto p-5 space-y-5">
+        <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-y-auto p-5 space-y-5 bg-white">
 
-          {/* Alternância Rápida: ENTRADA / SAÍDA (Zero inglês) */}
+          {/* Seleção do Tipo de Sacaria: Dois Botões Seletores Gigantes */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Tipo de Movimentação
-            </label>
-            <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-950 rounded-2xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setTipoMovimentacao('IN')}
-                className={`h-13 rounded-xl font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all touch-btn ${!isOut
-                  ? 'bg-green-600 text-white shadow-lg shadow-green-900/50 border border-green-400/40'
-                  : 'text-slate-400 hover:text-slate-200'
-                  }`}
-              >
-                <ArrowDownLeft className="w-5 h-5 stroke-[2.5]" />
-                <span>ENTRADA</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTipoMovimentacao('OUT')}
-                className={`h-13 rounded-xl font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all touch-btn ${isOut
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-900/50 border border-red-400/40'
-                  : 'text-slate-400 hover:text-slate-200'
-                  }`}
-              >
-                <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
-                <span>SAÍDA</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Seleção do Tipo de Sacaria (Normal x Pequena) */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
               Tipo de Sacaria
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setTipoSacaria('normal')}
-                className={`h-16 rounded-2xl border-2 flex flex-col items-center justify-center font-bold transition-all touch-btn ${tipoSacaria === 'normal'
-                  ? 'border-green-500 bg-green-500/15 text-white shadow-lg shadow-green-950/50'
-                  : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:border-slate-600'
-                  }`}
+                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${
+                  tipoSacaria === 'normal'
+                    ? 'border-black bg-slate-100 text-black shadow-md'
+                    : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
+                }`}
               >
                 <span className="text-base font-black tracking-wide">NORMAL</span>
-                <span className="text-xs text-slate-400">50 kg</span>
+                <span className="text-xs font-bold text-slate-700">50 kg</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTipoSacaria('pequena')}
-                className={`h-16 rounded-2xl border-2 flex flex-col items-center justify-center font-bold transition-all touch-btn ${tipoSacaria === 'pequena'
-                  ? 'border-green-500 bg-green-500/15 text-white shadow-lg shadow-green-950/50'
-                  : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:border-slate-600'
-                  }`}
+                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${
+                  tipoSacaria === 'pequena'
+                    ? 'border-black bg-slate-100 text-black shadow-md'
+                    : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
+                }`}
               >
                 <span className="text-base font-black tracking-wide">PEQUENA</span>
-                <span className="text-xs text-slate-400">25 kg</span>
+                <span className="text-xs font-bold text-slate-700">25 kg</span>
               </button>
             </div>
           </div>
 
-          {/* Quantidade com interceptação do Enter e botões ampliados */}
+          {/* Campo de Quantidade (Estilo Visor de Balança: Caixa Branca com Borda Preta Grossa) */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
               Quantidade de Sacarias
             </label>
             <div className="relative">
@@ -290,42 +254,27 @@ export default function MovimentacaoModal({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    e.currentTarget.blur(); // Apenas fecha/recolhe o teclado virtual
+                    e.currentTarget.blur();
                   }
                 }}
                 placeholder="0"
-                className="w-full h-20 text-center text-4xl font-black rounded-2xl bg-slate-950 border-2 border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/20"
+                className="w-full h-20 text-center text-4xl font-black rounded-lg bg-white border-3 border-black text-black placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-300 shadow-inner"
               />
               {quantidade && (
                 <button
                   type="button"
                   onClick={() => setQuantidade('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 px-3.5 py-2 rounded-xl bg-slate-800 text-xs font-bold text-slate-300 hover:text-white border border-slate-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 px-3.5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black text-black border border-slate-400 shadow-sm"
                 >
                   Limpar
                 </button>
               )}
             </div>
-
-            {/* Botões de incremento rápido com área ampliada (+10, +50, +100, +500) */}
-            <div className="grid grid-cols-4 gap-2.5 mt-3">
-              {[10, 50, 100, 500].map(val => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => adicionarQtd(val)}
-                  className="h-14 sm:h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border-2 border-slate-700 text-white text-base sm:text-lg font-black flex items-center justify-center gap-1 touch-btn shadow-sm"
-                >
-                  <Plus className="w-4 h-4 text-green-400 stroke-[3]" />
-                  <span>{val}</span>
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Campo de Data */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
               Data da Movimentação
             </label>
             <div className="relative">
@@ -334,19 +283,19 @@ export default function MovimentacaoModal({
                 required
                 value={dataMovimentacao}
                 onChange={(e) => setDataMovimentacao(e.target.value)}
-                className="w-full h-14 px-4 pl-12 text-base font-bold rounded-xl bg-slate-800 border-2 border-slate-700 text-white focus:outline-none focus:border-green-500"
+                className="w-full h-14 px-4 pl-12 text-base font-bold rounded-xl bg-white border-2 border-slate-400 text-black focus:border-black focus:outline-none"
               />
-              <Calendar className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Calendar className="w-5 h-5 text-slate-700 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none stroke-[2.5]" />
             </div>
           </div>
 
           {/* Gerenciamento de Documentos e Comprovantes */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-900">
                 Comprovantes Anexados ({documentosUrls.length + arquivosParaUpload.length})
               </label>
-              <span className="text-xs text-slate-500">Opcional</span>
+              <span className="text-xs text-slate-600 font-bold">Opcional</span>
             </div>
 
             {/* Botões de Ação para Fotos */}
@@ -354,9 +303,9 @@ export default function MovimentacaoModal({
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
-                className="h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 flex items-center justify-center gap-2 text-white font-bold text-sm sm:text-base touch-btn"
+                className="h-14 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border-2 border-slate-300 flex items-center justify-center gap-2 text-black font-black text-sm sm:text-base touch-btn shadow-sm"
               >
-                <Camera className="w-5 h-5 text-green-400" />
+                <Camera className="w-5 h-5 text-emerald-800 stroke-[2.5]" />
                 <span>Tirar Foto</span>
               </button>
               <input
@@ -371,9 +320,9 @@ export default function MovimentacaoModal({
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 flex items-center justify-center gap-2 text-white font-bold text-sm sm:text-base touch-btn"
+                className="h-14 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border-2 border-slate-300 flex items-center justify-center gap-2 text-black font-black text-sm sm:text-base touch-btn shadow-sm"
               >
-                <Upload className="w-5 h-5 text-amber-400" />
+                <Upload className="w-5 h-5 text-amber-700 stroke-[2.5]" />
                 <span>Galeria / PDF</span>
               </button>
               <input
@@ -386,7 +335,7 @@ export default function MovimentacaoModal({
               />
             </div>
 
-            {/* Miniaturas de Documentos com Botão Vermelho de 'X' para remoção individual */}
+            {/* Miniaturas de Documentos com Botão Vermelho de 'X' */}
             {(documentosUrls.length > 0 || arquivosParaUpload.length > 0) && (
               <div className="flex gap-3 mt-3 overflow-x-auto pb-2 pt-1">
                 {documentosUrls.map((url, index) => {
@@ -394,12 +343,12 @@ export default function MovimentacaoModal({
                   return (
                     <div
                       key={url + index}
-                      className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 flex-shrink-0 flex items-center justify-center shadow-md"
+                      className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-400 bg-slate-100 flex-shrink-0 flex items-center justify-center shadow-sm"
                     >
                       {isPdf ? (
-                        <div className="flex flex-col items-center justify-center text-red-400 p-1">
-                          <FileText className="w-7 h-7" />
-                          <span className="text-[10px] font-black text-slate-300">PDF</span>
+                        <div className="flex flex-col items-center justify-center text-red-700 p-1">
+                          <FileText className="w-7 h-7 stroke-[2.5]" />
+                          <span className="text-[10px] font-black text-black">PDF</span>
                         </div>
                       ) : (
                         <img
@@ -409,12 +358,12 @@ export default function MovimentacaoModal({
                         />
                       )}
 
-                      {/* Botão Vermelho 'X' sobreposto */}
+                      {/* Botão Vermelho 'X' */}
                       <button
                         type="button"
                         onClick={() => removerDocumentoUrl(url)}
                         title="Remover anexo"
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-md active:scale-95 touch-btn"
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#B91C1C] hover:bg-red-800 text-white flex items-center justify-center shadow-md active:scale-95 touch-btn"
                       >
                         <X className="w-3.5 h-3.5 stroke-[3]" />
                       </button>
@@ -426,10 +375,10 @@ export default function MovimentacaoModal({
                 {arquivosParaUpload.map((item) => (
                   <div
                     key={item.tempId}
-                    className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-500/50 bg-slate-950 flex-shrink-0 flex flex-col items-center justify-center p-1 text-center"
+                    className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-amber-500 bg-amber-50 flex-shrink-0 flex flex-col items-center justify-center p-1 text-center"
                   >
-                    <Loader2 className="w-5 h-5 text-amber-400 animate-spin mb-1" />
-                    <span className="text-[9px] font-black text-amber-300">Enviando</span>
+                    <Loader2 className="w-5 h-5 text-amber-700 animate-spin mb-1" />
+                    <span className="text-[10px] font-black text-amber-900">Enviando</span>
                   </div>
                 ))}
               </div>
@@ -438,7 +387,7 @@ export default function MovimentacaoModal({
 
           {/* Mensagem de Erro */}
           {erro && (
-            <div className="p-3.5 rounded-2xl bg-red-950/90 border border-red-800 text-red-200 text-sm font-bold">
+            <div className="p-3.5 rounded-xl bg-red-100 border-2 border-red-700 text-red-950 text-sm font-black">
               {erro}
             </div>
           )}
@@ -446,18 +395,18 @@ export default function MovimentacaoModal({
           <div className="h-4" />
         </form>
 
-        {/* Botão de Confirmação em Destaque (type="button", onClick consciente) */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 pb-safe">
+        {/* Botão Principal de Confirmação: Altura de 64px, texto em caixa alta text-xl font-bold */}
+        <div className="p-4 bg-white border-t-2 border-slate-300 pb-safe">
           <button
             type="button"
             disabled={salvando}
             onClick={handleSalvar}
-            className={`w-full h-16 sm:h-18 rounded-2xl font-black text-lg sm:text-xl uppercase tracking-wide flex items-center justify-center gap-3 shadow-2xl transition-all touch-btn ${
+            className={`w-full h-16 sm:h-18 rounded-xl font-black text-xl uppercase tracking-wide flex items-center justify-center gap-3 shadow-md border-2 transition-all touch-btn ${
               ehEdicao
-                ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 shadow-amber-950/60'
+                ? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 border-amber-800 text-white'
                 : isOut
-                ? 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white shadow-red-950/70 border-2 border-red-400/30'
-                : 'bg-green-600 hover:bg-green-500 active:bg-green-700 text-white shadow-green-950/70 border-2 border-green-400/30'
+                ? 'bg-[#B91C1C] hover:bg-red-800 active:bg-red-900 border-red-950 text-white'
+                : 'bg-[#15803D] hover:bg-emerald-800 active:bg-emerald-900 border-emerald-950 text-white'
             } ${salvando ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
             {salvando ? (
@@ -467,7 +416,7 @@ export default function MovimentacaoModal({
               </>
             ) : (
               <>
-                <CheckCircle2 className="w-7 h-7 stroke-[2.5]" />
+                <CheckCircle2 className="w-7 h-7 stroke-[3]" />
                 <span>
                   {ehEdicao
                     ? 'SALVAR ALTERAÇÕES'
