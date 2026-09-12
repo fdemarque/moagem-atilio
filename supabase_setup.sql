@@ -19,7 +19,14 @@ VALUES
     ('backup', '#Atilio1975!')
 ON CONFLICT (usuario) DO NOTHING;
 
--- 2. Tabela de Movimentações de Sacaria
+-- 2. Tabela de Clientes (Permite cadastrar clientes sem movimentação inicial)
+CREATE TABLE IF NOT EXISTS clientes (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(150) UNIQUE NOT NULL,
+    criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Tabela de Movimentações de Sacaria
 CREATE TABLE IF NOT EXISTS movimentacoes_sacaria (
     id SERIAL PRIMARY KEY,
     cliente VARCHAR(150) NOT NULL,
@@ -32,11 +39,13 @@ CREATE TABLE IF NOT EXISTS movimentacoes_sacaria (
 );
 
 -- Índices recomendados para desempenho
+CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes (nome);
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_cliente ON movimentacoes_sacaria (cliente);
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_data ON movimentacoes_sacaria (data_movimentacao);
 
--- 3. Desativação de Row Level Security (RLS) conforme solicitado
+-- 4. Desativação de Row Level Security (RLS) conforme solicitado
 ALTER TABLE usuarios DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clientes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE movimentacoes_sacaria DISABLE ROW LEVEL SECURITY;
 
 -- 4. Criação do Bucket de Storage 'comprovantes' (Público)

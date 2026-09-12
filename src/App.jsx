@@ -3,16 +3,11 @@ import Header from './components/Header';
 import Login from './pages/Login';
 import Clientes from './pages/Clientes';
 import PainelCliente from './pages/PainelCliente';
-import MovimentacaoModal from './components/MovimentacaoModal';
 
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [telaAtiva, setTelaAtiva] = useState('clientes'); // 'clientes' | 'painel_cliente'
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
-
-  // Estado para quando cadastra novo cliente e já abre a movimentação direto
-  const [novoClienteModalAberto, setNovoClienteModalAberto] = useState(false);
-  const [clienteParaNovaMovimentacao, setClienteParaNovaMovimentacao] = useState(null);
 
   // Feedback Toast
   const [toastMensagem, setToastMensagem] = useState('');
@@ -56,10 +51,10 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Cadastrar Novo Cliente e abrir formulário de movimentação imediatamente
-  const handleNovoClienteComMovimentacao = (nomeCliente) => {
-    setClienteParaNovaMovimentacao(nomeCliente);
-    setNovoClienteModalAberto(true);
+  // Cadastrar Novo Cliente sem solicitar movimentação prévia
+  const handleNovoClienteCadastrado = (nomeCliente) => {
+    mostrarToast(`Cliente "${nomeCliente}" cadastrado com sucesso!`);
+    handleSelectCliente(nomeCliente);
   };
 
   if (!usuarioLogado) {
@@ -79,7 +74,7 @@ export default function App() {
         {telaAtiva === 'clientes' ? (
           <Clientes
             onSelectCliente={handleSelectCliente}
-            onNovoClienteComMovimentacao={handleNovoClienteComMovimentacao}
+            onNovoClienteCadastrado={handleNovoClienteCadastrado}
           />
         ) : (
           <PainelCliente
@@ -91,24 +86,6 @@ export default function App() {
           />
         )}
       </main>
-
-      {/* Modal acionado quando cria novo cliente e direciona direto para movimentação */}
-      {novoClienteModalAberto && clienteParaNovaMovimentacao && (
-        <MovimentacaoModal
-          isOpen={novoClienteModalAberto}
-          onClose={() => {
-            setNovoClienteModalAberto(false);
-            setClienteParaNovaMovimentacao(null);
-          }}
-          cliente={clienteParaNovaMovimentacao}
-          tipoInicial="OUT"
-          onSucesso={(mov) => {
-            mostrarToast(`Primeira movimentação salva para ${mov.cliente}!`);
-            // Abre o painel do cliente recém criado
-            handleSelectCliente(mov.cliente);
-          }}
-        />
-      )}
 
       {/* Toast Notification */}
       {toastMensagem && (

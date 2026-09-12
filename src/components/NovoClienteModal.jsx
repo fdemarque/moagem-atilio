@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { UserPlus, X, ArrowRight } from 'lucide-react';
+import { UserPlus, X, Check } from 'lucide-react';
 
-export default function NovoClienteModal({ isOpen, onClose, onConfirm }) {
+export default function NovoClienteModal({ isOpen, onClose, onConfirm, salvando = false }) {
   const [nome, setNome] = useState('');
   const [erro, setErro] = useState('');
 
@@ -61,12 +61,13 @@ export default function NovoClienteModal({ isOpen, onClose, onConfirm }) {
           </div>
 
           <p className="text-xs font-bold text-slate-700 leading-relaxed">
-            Após cadastrar o nome, você registrará a primeira movimentação de sacaria.
+            O cliente será cadastrado imediatamente. Você poderá registrar entradas e saídas quando desejar.
           </p>
 
           <div className="pt-2 flex gap-3">
             <button
               type="button"
+              disabled={salvando}
               onClick={onClose}
               className="flex-1 h-14 rounded-xl bg-slate-200 hover:bg-slate-300 active:bg-slate-400 border-2 border-slate-400 text-black font-black text-base touch-btn transition-colors"
             >
@@ -74,10 +75,11 @@ export default function NovoClienteModal({ isOpen, onClose, onConfirm }) {
             </button>
             <button
               type="submit"
-              className="flex-1 h-14 rounded-xl bg-[#15803D] hover:bg-emerald-800 active:bg-emerald-900 border-2 border-emerald-950 text-white font-black text-base flex items-center justify-center gap-2 shadow-md touch-btn transition-colors"
+              disabled={salvando}
+              className={`flex-1 h-14 rounded-xl bg-[#15803D] hover:bg-emerald-800 active:bg-emerald-900 border-2 border-emerald-950 text-white font-black text-base flex items-center justify-center gap-2 shadow-md touch-btn transition-colors ${salvando ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              <span>Continuar</span>
-              <ArrowRight className="w-5 h-5 stroke-[3]" />
+              <Check className="w-5 h-5 stroke-[3]" />
+              <span>{salvando ? 'Salvando...' : 'Cadastrar Cliente'}</span>
             </button>
           </div>
         </form>

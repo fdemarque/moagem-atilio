@@ -155,10 +155,84 @@ export async function deletarMovimentacao(id, documentos = []) {
   return true;
 }
 
+const CLIENTES_STORAGE_KEY = 'moagem_clientes_cadastrados';
+
 /**
- * Busca todos os clientes distintos e consolida saldo de sacarias
+ * Retorna lista de clientes cadastrados no armazenamento local
+ */
+export function obterClientesLocais() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Salva um cliente no armazenamento local (garante disponibilidade e suporte offline)
+ */
+export function salvarClienteLocal(nome) {
+  if (typeof window === 'undefined') return;
+  try {
+    const lista = obterClientesLocais();
+    if (!lista.some(item => item.toLowerCase() === nome.toLowerCase())) {
+      lista.push(nome);
+      localStorage.setItem(CLIENTES_STORAGE_KEY, JSON.stringify(lista));
+    }
+  } catch (e) {
+    console.warn('Erro ao salvar cliente localmente:', e);
+  }
+}
+
+/**
+ * Cadastra um novo cliente no sistema (sem exigir nenhuma movimentação prévia)
+ */
+export async function cadastrarCliente(nome) {
+  const nomeLimpo = nome?.trim();
+  if (!nomeLimpo) throw new Error('O nome do cliente é obrigatório.');
+
+  // 1. Salva localmente de imediato
+  salvarClienteLocal(nomeLimpo);
+
+  // 2. Tenta persistir na tabela 'clientes' do Supabase se ela existir
+  try {
+    const { error } = await supabase
+      .from('clientes')
+      .insert([{ nome: nomeLimpo }]);
+    if (error) {
+      console.info('Aviso Supabase clientes (usando persistência híbrida):', error.message);
+    }
+  } catch (e) {
+    console.info('Aviso conexão clientes:', e);
+  }
+
+  return { nome: nomeLimpo };
+}
+
+/**
+ * Busca todos os clientes distintos (mesclando cadastros e movimentações) e consolida saldo de sacarias
  */
 export async function buscarClientesComResumo() {
+  // 1. Tenta buscar da tabela 'clientes' do Supabase
+  let clientesDbNomes = [];
+  try {
+    const { data: dbClientes, error: dbError } = await supabase
+      .from('clientes')
+      .select('nome')
+      .order('nome');
+    if (!dbError && Array.isArray(dbClientes)) {
+      clientesDbNomes = dbClientes.map(c => c.nome);
+    }
+  } catch (e) {
+    // Tabela pode não existir ainda no banco
+  }
+
+  // 2. Busca nomes cadastrados localmente
+  const clientesLocais = obterClientesLocais();
+
+  // 3. Busca movimentações de sacaria
   const { data, error } = await supabase
     .from('movimentacoes_sacaria')
     .select('*')
@@ -170,6 +244,27 @@ export async function buscarClientesComResumo() {
   }
 
   const clientesMap = {};
+
+  // Inicializa todos os clientes conhecidos (inclusive sem movimentações)
+  const todosNomes = Array.from(new Set([
+    ...clientesDbNomes,
+    ...clientesLocais,
+    ...(data || []).map(m => m.cliente)
+  ])).filter(Boolean);
+
+  todosNomes.forEach(nome => {
+    clientesMap[nome] = {
+      nome,
+      totalMovimentacoes: 0,
+      ultimaMovimentacao: null,
+      saldoNormal: 0,
+      saldoPequena: 0,
+      totalInNormal: 0,
+      totalOutNormal: 0,
+      totalInPequena: 0,
+      totalOutPequena: 0,
+    };
+  });
 
   (data || []).forEach(mov => {
     const nome = mov.cliente;
@@ -188,6 +283,9 @@ export async function buscarClientesComResumo() {
     }
 
     clientesMap[nome].totalMovimentacoes += 1;
+    if (!clientesMap[nome].ultimaMovimentacao) {
+      clientesMap[nome].ultimaMovimentacao = mov.data_movimentacao;
+    }
     const qtd = mov.quantidade || 0;
 
     if (mov.tipo_sacaria === 'normal') {

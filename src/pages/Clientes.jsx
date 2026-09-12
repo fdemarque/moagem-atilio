@@ -7,14 +7,15 @@ import {
   Users, 
   Package
 } from 'lucide-react';
-import { buscarClientesComResumo } from '../lib/supabase';
+import { buscarClientesComResumo, cadastrarCliente } from '../lib/supabase';
 import NovoClienteModal from '../components/NovoClienteModal';
 
-export default function Clientes({ onSelectCliente, onNovoClienteComMovimentacao }) {
+export default function Clientes({ onSelectCliente, onNovoClienteCadastrado }) {
   const [clientes, setClientes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [termoBusca, setTermoBusca] = useState('');
   const [modalNovoClienteAberto, setModalNovoClienteAberto] = useState(false);
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [erro, setErro] = useState('');
 
   const carregarClientes = async () => {
@@ -39,9 +40,24 @@ export default function Clientes({ onSelectCliente, onNovoClienteComMovimentacao
     c.nome.toLowerCase().includes(termoBusca.toLowerCase().trim())
   );
 
-  const handleConfirmarNovoCliente = (nomeCliente) => {
-    setModalNovoClienteAberto(false);
-    onNovoClienteComMovimentacao(nomeCliente);
+  const handleConfirmarNovoCliente = async (nomeCliente) => {
+    setSalvandoCliente(true);
+    setErro('');
+    try {
+      await cadastrarCliente(nomeCliente);
+      setModalNovoClienteAberto(false);
+      await carregarClientes();
+      if (onNovoClienteCadastrado) {
+        onNovoClienteCadastrado(nomeCliente);
+      } else if (onSelectCliente) {
+        onSelectCliente(nomeCliente);
+      }
+    } catch (err) {
+      console.error('Erro ao cadastrar cliente:', err);
+      setErro('Não foi possível cadastrar o cliente. Tente novamente.');
+    } finally {
+      setSalvandoCliente(false);
+    }
   };
 
   return (
@@ -198,6 +214,7 @@ export default function Clientes({ onSelectCliente, onNovoClienteComMovimentacao
         isOpen={modalNovoClienteAberto}
         onClose={() => setModalNovoClienteAberto(false)}
         onConfirm={handleConfirmarNovoCliente}
+        salvando={salvandoCliente}
       />
 
     </div>
