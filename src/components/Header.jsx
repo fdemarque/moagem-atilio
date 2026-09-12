@@ -5,7 +5,7 @@ export default function Header({ usuario, onLogout }) {
   return (
     <header className="no-print bg-white border-b-2 border-slate-300 sticky top-0 z-30 pt-safe px-4 py-3 shadow-sm">
       <div className="max-w-2xl mx-auto flex items-center justify-between">
-        
+
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-2.5">
           <div className="w-11 h-11 rounded-xl bg-emerald-700 flex items-center justify-center shadow-md border-2 border-emerald-900 text-white">
@@ -16,7 +16,7 @@ export default function Header({ usuario, onLogout }) {
               Moagem Atílio
             </h1>
             <p className="text-xs text-slate-800 font-bold uppercase tracking-wider">
-              Controle de Sacarias
+              Controle de Estoque
             </p>
           </div>
         </div>

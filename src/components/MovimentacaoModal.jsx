@@ -162,18 +162,16 @@ export default function MovimentacaoModal({
       <div className="w-full sm:max-w-lg bg-white border-t-2 sm:border-2 border-slate-400 rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
 
         {/* Header com destaque de Alto Contraste (Fundo Claro) */}
-        <div className={`px-5 py-4 border-b-2 flex items-center justify-between ${
-          isOut
+        <div className={`px-5 py-4 border-b-2 flex items-center justify-between ${isOut
             ? 'bg-red-50 border-red-700 text-black'
             : 'bg-emerald-50 border-emerald-700 text-black'
-        }`}>
+          }`}>
           <div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider text-white ${
-                isOut ? 'bg-[#B91C1C]' : 'bg-[#15803D]'
-              }`}>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider text-white ${isOut ? 'bg-[#B91C1C]' : 'bg-[#15803D]'
+                }`}>
                 {isOut ? <ArrowUp className="w-4 h-4 stroke-[3]" /> : <ArrowDown className="w-4 h-4 stroke-[3]" />}
-                {isOut ? '↑ SAÍDA' : '↓ ENTRADA'}
+                {isOut ? 'SAÍDA' : 'ENTRADA'}
               </span>
               <h2 className="text-lg sm:text-xl font-black text-black truncate max-w-[200px]">
                 {cliente}
@@ -183,8 +181,8 @@ export default function MovimentacaoModal({
               {ehEdicao
                 ? 'Editar registro de sacarias'
                 : isOut
-                ? 'Sacarias enviadas ao cliente'
-                : 'Sacarias devolvidas pelo cliente'}
+                  ? 'Sacarias enviadas ao cliente'
+                  : 'Sacarias devolvidas pelo cliente'}
             </p>
           </div>
 
@@ -210,11 +208,10 @@ export default function MovimentacaoModal({
               <button
                 type="button"
                 onClick={() => setTipoSacaria('normal')}
-                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${
-                  tipoSacaria === 'normal'
+                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${tipoSacaria === 'normal'
                     ? 'border-black bg-slate-100 text-black shadow-md'
                     : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
-                }`}
+                  }`}
               >
                 <span className="text-base font-black tracking-wide">NORMAL</span>
                 <span className="text-xs font-bold text-slate-700">50 kg</span>
@@ -223,11 +220,10 @@ export default function MovimentacaoModal({
               <button
                 type="button"
                 onClick={() => setTipoSacaria('pequena')}
-                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${
-                  tipoSacaria === 'pequena'
+                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${tipoSacaria === 'pequena'
                     ? 'border-black bg-slate-100 text-black shadow-md'
                     : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
-                }`}
+                  }`}
               >
                 <span className="text-base font-black tracking-wide">PEQUENA</span>
                 <span className="text-xs font-bold text-slate-700">25 kg</span>
@@ -401,13 +397,12 @@ export default function MovimentacaoModal({
             type="button"
             disabled={salvando}
             onClick={handleSalvar}
-            className={`w-full h-16 sm:h-18 rounded-xl font-black text-xl uppercase tracking-wide flex items-center justify-center gap-3 shadow-md border-2 transition-all touch-btn ${
-              ehEdicao
+            className={`w-full h-16 sm:h-18 rounded-xl font-black text-xl uppercase tracking-wide flex items-center justify-center gap-3 shadow-md border-2 transition-all touch-btn ${ehEdicao
                 ? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 border-amber-800 text-white'
                 : isOut
-                ? 'bg-[#B91C1C] hover:bg-red-800 active:bg-red-900 border-red-950 text-white'
-                : 'bg-[#15803D] hover:bg-emerald-800 active:bg-emerald-900 border-emerald-950 text-white'
-            } ${salvando ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  ? 'bg-[#B91C1C] hover:bg-red-800 active:bg-red-900 border-red-950 text-white'
+                  : 'bg-[#15803D] hover:bg-emerald-800 active:bg-emerald-900 border-emerald-950 text-white'
+              } ${salvando ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
             {salvando ? (
               <>
@@ -421,8 +416,8 @@ export default function MovimentacaoModal({
                   {ehEdicao
                     ? 'SALVAR ALTERAÇÕES'
                     : isOut
-                    ? 'CONFIRMAR SAÍDA'
-                    : 'CONFIRMAR ENTRADA'}
+                      ? 'CONFIRMAR SAÍDA'
+                      : 'CONFIRMAR ENTRADA'}
                 </span>
               </>
             )}

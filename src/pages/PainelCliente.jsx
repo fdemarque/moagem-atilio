@@ -224,7 +224,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
           <div className="flex items-center gap-2">
             <ArrowDown className="w-6 h-6 stroke-[3]" />
             <span className="text-sm sm:text-base md:text-lg tracking-wide text-center leading-tight">
-              ↓ REGISTRAR ENTRADA
+              REGISTRAR ENTRADA
             </span>
           </div>
         </button>
@@ -237,7 +237,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
           <div className="flex items-center gap-2">
             <ArrowUp className="w-6 h-6 stroke-[3]" />
             <span className="text-sm sm:text-base md:text-lg tracking-wide text-center leading-tight">
-              ↑ REGISTRAR SAÍDA
+              REGISTRAR SAÍDA
             </span>
           </div>
         </button>
@@ -334,20 +334,22 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                 <div
                   key={mov.id}
                   onClick={() => abrirModalEdicao(mov)}
-                  className="group relative bg-white hover:bg-slate-50 active:bg-slate-100 border-2 border-slate-300 hover:border-slate-500 rounded-xl p-4 flex items-center justify-between shadow-sm transition-all cursor-pointer touch-btn"
+                  className={`group relative rounded-xl p-4 flex items-center justify-between shadow-sm transition-all cursor-pointer touch-btn border-2 ${isOut
+                    ? 'bg-red-50 hover:bg-red-100/70 active:bg-red-100 border-red-200 hover:border-red-300'
+                    : 'bg-emerald-50 hover:bg-emerald-100/70 active:bg-emerald-100 border-emerald-200 hover:border-emerald-300'
+                  }`}
                   title="Toque para editar este registro"
                 >
                   {/* Tipo com Badge Visual Duplo e Quantidade em Destaque Preto Gigante */}
                   <div className="flex items-center gap-3.5">
-                    {/* Badge Sólida: ↓ ENTRADA ou ↑ SAÍDA */}
-                    <div className={`px-2.5 py-2 rounded-lg flex flex-col items-center justify-center min-w-[72px] border-2 ${
-                      isOut
-                        ? 'bg-red-50 text-[#B91C1C] border-[#B91C1C]'
-                        : 'bg-emerald-50 text-[#15803D] border-[#15803D]'
-                    }`}>
+                    {/* Badge sem borda com fundo branco para contraste limpo */}
+                    <div className={`px-2.5 py-2 rounded-lg flex flex-col items-center justify-center min-w-[72px] shadow-sm ${isOut
+                      ? 'bg-white text-[#B91C1C]'
+                      : 'bg-white text-[#15803D]'
+                      }`}>
                       {isOut ? <ArrowUp className="w-5 h-5 stroke-[3]" /> : <ArrowDown className="w-5 h-5 stroke-[3]" />}
                       <span className="text-[11px] font-black uppercase tracking-wider">
-                        {isOut ? '↑ SAÍDA' : '↓ ENTRADA'}
+                        {isOut ? 'SAÍDA' : 'ENTRADA'}
                       </span>
                     </div>
 
@@ -358,7 +360,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                           {mov.quantidade} <span className="text-xs font-bold text-slate-700">sacas</span>
                         </span>
                         {/* Tipo de Sacaria em Badge de Contorno Nítido */}
-                        <span className="px-2 py-0.5 rounded-md text-xs font-black uppercase bg-slate-100 border-2 border-slate-400 text-black">
+                        <span className="px-2 py-0.5 rounded-md text-xs font-black uppercase bg-white border-2 border-slate-300 text-black shadow-xs">
                           {mov.tipo_sacaria}
                         </span>
                       </div>
@@ -378,7 +380,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                           e.stopPropagation();
                           setUrlComprovanteAtivo(mov.documentos[0]);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-emerald-800 font-bold text-xs touch-btn shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-slate-50 border-2 border-slate-300 text-emerald-800 font-bold text-xs touch-btn shadow-sm"
                         title="Ver fotos anexadas"
                       >
                         <ImageIcon className="w-4 h-4" />
@@ -387,17 +389,17 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                       </button>
                     )}
 
-                    {/* Botão de Lixeira com Área de Toque de 48x48px (w-12 h-12) */}
+                    {/* Botão de Lixeira com Ícone Cinza e Área de Toque de 48x48px */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMovimentacaoParaExcluir(mov);
                       }}
-                      className="w-12 h-12 rounded-xl bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 border-2 border-red-300 hover:border-red-500 flex items-center justify-center touch-btn transition-colors shadow-sm"
+                      className="w-12 h-12 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-400 hover:text-slate-600 border-2 border-slate-200 hover:border-slate-300 flex items-center justify-center touch-btn transition-colors shadow-sm"
                       title="Apagar este registro"
                     >
-                      <Trash2 className="w-6 h-6 stroke-[2.5]" />
+                      <Trash2 className="w-6 h-6 stroke-[2.2]" />
                     </button>
                   </div>
                 </div>
@@ -409,7 +411,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
 
       {/* Saldo do Mês - Layout com Borda Sólida e Destaque Conforme Desenho */}
       <div className="bg-white border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4 print-card">
-        
+
         {/* Mês e Ano de Referência */}
         <div className="text-left">
           <span className="text-sm sm:text-base font-black tracking-wider text-slate-900 uppercase">
@@ -417,8 +419,8 @@ Total de movimentações no mês: ${movimentacoes.length}`;
           </span>
         </div>
 
-        {/* Caixa de Destaque com Borda Laranja conforme o desenho de referência */}
-        <div className="border-3 border-amber-600 bg-amber-50 rounded-xl py-7 px-4 sm:py-8 sm:px-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center shadow-sm">
+        {/* Caixa de Destaque com tom amarelado pastel opaco (mesmo tom do ícone de imprimir) */}
+        <div className="bg-amber-100 border-2 border-amber-200/80 rounded-xl py-7 px-4 sm:py-8 sm:px-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center shadow-sm">
           <span className="text-xl sm:text-2xl md:text-3xl font-black text-black tracking-wide uppercase">
             SALDO DO MÊS:
           </span>
@@ -465,7 +467,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
       {movimentacaoParaExcluir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md bg-white border-3 border-red-700 rounded-2xl p-6 space-y-5 shadow-2xl animate-in zoom-in-95">
-            
+
             <div className="flex items-center gap-3 text-red-700">
               <div className="w-12 h-12 rounded-xl bg-red-100 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
                 <Trash2 className="w-6 h-6 stroke-[2.5]" />
