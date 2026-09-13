@@ -149,7 +149,7 @@ export default function MovimentacaoModal({
       onClose();
     } catch (err) {
       console.error('Erro ao salvar movimentação:', err);
-      setErro('Erro ao registrar movimentação. Verifique a conexão.');
+      setErro(err.message || 'Erro ao registrar movimentação. Verifique a conexão.');
     } finally {
       setSalvando(false);
     }
