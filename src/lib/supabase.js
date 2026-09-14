@@ -94,17 +94,54 @@ export async function uploadComprovante(file) {
 }
 
 /**
- * Salva uma nova movimentação de sacaria
+ * Calcula o peso em quilos de acordo com a regra de negócio:
+ * - IN (granel): peso é a própria quantidade informada em kg
+ * - OUT (sacas): quantidade * (50kg se normal, 25kg se pequena)
  */
-export async function registrarMovimentacao({ cliente, tipo_movimentacao, tipo_sacaria, quantidade, data_movimentacao, documentos }) {
+export function calcularPesoKg(tipo_movimentacao, tipo_sacaria, quantidade) {
+  const qtd = parseInt(quantidade, 10) || 0;
+  if (tipo_movimentacao === 'IN') {
+    return qtd;
+  }
+  const pesoUnitario = tipo_sacaria === 'pequena' ? 25 : 50;
+  return qtd * pesoUnitario;
+}
+
+/**
+ * Extrai o peso_kg de uma movimentação com suporte a registros legados
+ */
+export function extrairPesoKg(mov) {
+  if (!mov) return 0;
+  if (mov.peso_kg !== null && mov.peso_kg !== undefined && Number(mov.peso_kg) > 0) {
+    return Number(mov.peso_kg);
+  }
+  const qtd = parseInt(mov.quantidade, 10) || 0;
+  if (mov.tipo_movimentacao === 'IN') {
+    return qtd;
+  }
+  const pesoUnitario = mov.tipo_sacaria === 'pequena' ? 25 : 50;
+  return qtd * pesoUnitario;
+}
+
+/**
+ * Salva uma nova movimentação de sacaria / grãos a granel
+ */
+export async function registrarMovimentacao({ cliente, tipo_movimentacao, tipo_sacaria, quantidade, peso_kg, data_movimentacao, documentos }) {
+  const qtdNum = parseInt(quantidade, 10) || 0;
+  const sacariaFinal = tipo_movimentacao === 'IN' ? 'granel' : (tipo_sacaria || 'normal');
+  const pesoFinal = (peso_kg !== undefined && peso_kg !== null && !isNaN(Number(peso_kg)))
+    ? Number(peso_kg)
+    : calcularPesoKg(tipo_movimentacao, sacariaFinal, qtdNum);
+
   const { data, error } = await supabase
     .from('movimentacoes_sacaria')
     .insert([
       {
         cliente: cliente.trim(),
         tipo_movimentacao,
-        tipo_sacaria,
-        quantidade: parseInt(quantidade, 10),
+        tipo_sacaria: sacariaFinal,
+        quantidade: qtdNum,
+        peso_kg: pesoFinal,
         data_movimentacao,
         documentos: documentos || []
       }
@@ -122,13 +159,20 @@ export async function registrarMovimentacao({ cliente, tipo_movimentacao, tipo_s
 /**
  * Atualiza uma movimentação existente
  */
-export async function atualizarMovimentacao(id, { tipo_movimentacao, tipo_sacaria, quantidade, data_movimentacao, documentos }) {
+export async function atualizarMovimentacao(id, { tipo_movimentacao, tipo_sacaria, quantidade, peso_kg, data_movimentacao, documentos }) {
+  const qtdNum = parseInt(quantidade, 10) || 0;
+  const sacariaFinal = tipo_movimentacao === 'IN' ? 'granel' : (tipo_sacaria || 'normal');
+  const pesoFinal = (peso_kg !== undefined && peso_kg !== null && !isNaN(Number(peso_kg)))
+    ? Number(peso_kg)
+    : calcularPesoKg(tipo_movimentacao, sacariaFinal, qtdNum);
+
   const { data, error } = await supabase
     .from('movimentacoes_sacaria')
     .update({
       tipo_movimentacao,
-      tipo_sacaria,
-      quantidade: parseInt(quantidade, 10),
+      tipo_sacaria: sacariaFinal,
+      quantidade: qtdNum,
+      peso_kg: pesoFinal,
       data_movimentacao,
       documentos: documentos || []
     })
@@ -279,6 +323,10 @@ export async function buscarClientesComResumo() {
       nome,
       totalMovimentacoes: 0,
       ultimaMovimentacao: null,
+      saldoTotalKg: 0,
+      estimativaSacas: 0,
+      totalEntradasKg: 0,
+      totalSaidasKg: 0,
       saldoNormal: 0,
       saldoPequena: 0,
       totalInNormal: 0,
@@ -295,6 +343,10 @@ export async function buscarClientesComResumo() {
         nome,
         totalMovimentacoes: 0,
         ultimaMovimentacao: mov.data_movimentacao,
+        saldoTotalKg: 0,
+        estimativaSacas: 0,
+        totalEntradasKg: 0,
+        totalSaidasKg: 0,
         saldoNormal: 0,
         saldoPequena: 0,
         totalInNormal: 0,
@@ -308,28 +360,75 @@ export async function buscarClientesComResumo() {
     if (!clientesMap[nome].ultimaMovimentacao) {
       clientesMap[nome].ultimaMovimentacao = mov.data_movimentacao;
     }
+
+    const peso = extrairPesoKg(mov);
     const qtd = mov.quantidade || 0;
 
-    if (mov.tipo_sacaria === 'normal') {
-      if (mov.tipo_movimentacao === 'OUT') {
-        clientesMap[nome].totalOutNormal += qtd;
-        clientesMap[nome].saldoNormal += qtd; // Sacarias enviadas ao cliente
-      } else {
+    if (mov.tipo_movimentacao === 'IN') {
+      clientesMap[nome].totalEntradasKg += peso;
+      clientesMap[nome].saldoTotalKg += peso;
+      if (mov.tipo_sacaria === 'normal') {
         clientesMap[nome].totalInNormal += qtd;
-        clientesMap[nome].saldoNormal -= qtd; // Sacarias devolvidas pelo cliente
-      }
-    } else if (mov.tipo_sacaria === 'pequena') {
-      if (mov.tipo_movimentacao === 'OUT') {
-        clientesMap[nome].totalOutPequena += qtd;
-        clientesMap[nome].saldoPequena += qtd;
-      } else {
+        clientesMap[nome].saldoNormal -= qtd;
+      } else if (mov.tipo_sacaria === 'pequena') {
         clientesMap[nome].totalInPequena += qtd;
         clientesMap[nome].saldoPequena -= qtd;
       }
+    } else {
+      // OUT (Saída de sacas abatendo peso)
+      clientesMap[nome].totalSaidasKg += peso;
+      clientesMap[nome].saldoTotalKg -= peso;
+      if (mov.tipo_sacaria === 'normal') {
+        clientesMap[nome].totalOutNormal += qtd;
+        clientesMap[nome].saldoNormal += qtd;
+      } else if (mov.tipo_sacaria === 'pequena') {
+        clientesMap[nome].totalOutPequena += qtd;
+        clientesMap[nome].saldoPequena += qtd;
+      }
     }
+
+    clientesMap[nome].estimativaSacas = Math.floor(clientesMap[nome].saldoTotalKg / 50);
   });
 
   return Object.values(clientesMap).sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+/**
+ * Obtém o saldo cumulativo total de um cliente (todas as movimentações)
+ */
+export async function obterSaldoTotalCliente(cliente) {
+  const { data, error } = await supabase
+    .from('movimentacoes_sacaria')
+    .select('*')
+    .eq('cliente', cliente.trim());
+
+  if (error) {
+    console.error('Erro ao obter saldo total do cliente:', error);
+    throw error;
+  }
+
+  let totalEntradasKg = 0;
+  let totalSaidasKg = 0;
+
+  (data || []).forEach(mov => {
+    const peso = extrairPesoKg(mov);
+    if (mov.tipo_movimentacao === 'IN') {
+      totalEntradasKg += peso;
+    } else {
+      totalSaidasKg += peso;
+    }
+  });
+
+  const saldoTotalKg = totalEntradasKg - totalSaidasKg;
+  const estimativaSacas = Math.floor(saldoTotalKg / 50);
+
+  return {
+    saldoTotalKg,
+    estimativaSacas,
+    totalEntradasKg,
+    totalSaidasKg,
+    totalMovimentacoes: (data || []).length
+  };
 }
 
 /**

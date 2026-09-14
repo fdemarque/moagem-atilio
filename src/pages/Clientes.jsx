@@ -182,23 +182,25 @@ export default function Clientes({ onSelectCliente, onNovoClienteCadastrado }) {
                   </div>
                 </div>
 
-                {/* Balanço Rápido de Sacarias no Cartão */}
-                <div className="mt-3 pt-3 border-t-2 border-slate-200 grid grid-cols-2 gap-2.5">
-                  <div className="bg-slate-100 px-3 py-2 rounded-lg border-2 border-slate-300">
-                    <span className="block text-xs font-black text-slate-800 uppercase">
-                      Sacaria Normal
+                {/* Saldo de Estoque em Destaque no Cartão */}
+                <div className="mt-3 pt-3 border-t-2 border-slate-200 flex items-center justify-between">
+                  <div>
+                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                      Saldo Disponível
                     </span>
-                    <span className="text-lg font-black text-black">
-                      {saldoNormal} <span className="text-xs font-bold text-slate-700">em posse</span>
-                    </span>
+                    <div className={`text-xl sm:text-2xl font-black ${
+                      (cli.saldoTotalKg || 0) >= 0 ? 'text-black' : 'text-red-600'
+                    }`}>
+                      {(cli.saldoTotalKg || 0).toLocaleString('pt-BR')} <span className="text-sm font-extrabold text-slate-700">kg</span>
+                    </div>
                   </div>
 
-                  <div className="bg-slate-100 px-3 py-2 rounded-lg border-2 border-slate-300">
-                    <span className="block text-xs font-black text-slate-800 uppercase">
-                      Sacaria Pequena
+                  <div className="text-right">
+                    <span className="block text-[11px] font-black text-slate-600 uppercase tracking-wider">
+                      Equivalente
                     </span>
-                    <span className="text-lg font-black text-black">
-                      {saldoPequena} <span className="text-xs font-bold text-slate-700">em posse</span>
+                    <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-xs font-black text-black">
+                      ~{cli.estimativaSacas || 0} sacas (50kg)
                     </span>
                   </div>
                 </div>

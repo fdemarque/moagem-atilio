@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ArrowDown,
   ArrowUp,
-  Printer,
   Share2,
   ChevronLeft,
   ChevronRight,
@@ -13,9 +12,16 @@ import {
   Check,
   Trash2,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  FileDown
 } from 'lucide-react';
-import { buscarMovimentacoesMensais, deletarMovimentacao } from '../lib/supabase';
+import {
+  buscarMovimentacoesMensais,
+  deletarMovimentacao,
+  obterSaldoTotalCliente,
+  extrairPesoKg
+} from '../lib/supabase';
+import { exportarOuCompartilharPdf } from '../utils/relatorioPdf';
 import MovimentacaoModal from '../components/MovimentacaoModal';
 import ComprovanteModal from '../components/ComprovanteModal';
 
@@ -30,7 +36,15 @@ export default function PainelCliente({ cliente, onVoltar }) {
   const [anoSelecionado, setAnoSelecionado] = useState(dataAtual.getFullYear());
 
   const [movimentacoes, setMovimentacoes] = useState([]);
+  const [saldoGeral, setSaldoGeral] = useState({
+    saldoTotalKg: 0,
+    estimativaSacas: 0,
+    totalEntradasKg: 0,
+    totalSaidasKg: 0,
+    totalMovimentacoes: 0
+  });
   const [carregando, setCarregando] = useState(true);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [erro, setErro] = useState('');
 
   // Modais e Estados de Ação
@@ -43,14 +57,18 @@ export default function PainelCliente({ cliente, onVoltar }) {
   const [urlComprovanteAtivo, setUrlComprovanteAtivo] = useState(null);
   const [feedbackAcao, setFeedbackAcao] = useState('');
 
-  const carregarMovimentacoes = async () => {
+  const carregarDados = async () => {
     setCarregando(true);
     setErro('');
     try {
-      const dados = await buscarMovimentacoesMensais(cliente, mesSelecionado, anoSelecionado);
-      setMovimentacoes(dados);
+      const [dadosMensais, saldoTotal] = await Promise.all([
+        buscarMovimentacoesMensais(cliente, mesSelecionado, anoSelecionado),
+        obterSaldoTotalCliente(cliente)
+      ]);
+      setMovimentacoes(dadosMensais);
+      setSaldoGeral(saldoTotal);
     } catch (err) {
-      console.error('Erro ao carregar movimentações:', err);
+      console.error('Erro ao carregar dados do cliente:', err);
       setErro('Falha ao obter movimentações deste período.');
     } finally {
       setCarregando(false);
@@ -58,7 +76,7 @@ export default function PainelCliente({ cliente, onVoltar }) {
   };
 
   useEffect(() => {
-    carregarMovimentacoes();
+    carregarDados();
   }, [cliente, mesSelecionado, anoSelecionado]);
 
   // Navegação de mês anterior e próximo
@@ -80,25 +98,30 @@ export default function PainelCliente({ cliente, onVoltar }) {
     }
   };
 
-  // Cálculo de Totais do Mês
-  const totais = movimentacoes.reduce(
+  // Cálculo de Totais do Mês em kg e sacas
+  const totaisMes = movimentacoes.reduce(
     (acc, m) => {
+      const peso = extrairPesoKg(m);
       const qtd = m.quantidade || 0;
+
       if (m.tipo_movimentacao === 'IN') {
-        if (m.tipo_sacaria === 'normal') acc.inNormal += qtd;
-        if (m.tipo_sacaria === 'pequena') acc.inPequena += qtd;
+        acc.entradasKg += peso;
       } else {
-        if (m.tipo_sacaria === 'normal') acc.outNormal += qtd;
-        if (m.tipo_sacaria === 'pequena') acc.outPequena += qtd;
+        acc.saidasKg += peso;
+        acc.totalSacas += qtd;
+        if (m.tipo_sacaria === 'pequena') {
+          acc.sacasPequenas += qtd;
+        } else {
+          acc.sacasNormais += qtd;
+        }
       }
       return acc;
     },
-    { inNormal: 0, outNormal: 0, inPequena: 0, outPequena: 0 }
+    { entradasKg: 0, saidasKg: 0, totalSacas: 0, sacasNormais: 0, sacasPequenas: 0 }
   );
 
-  const totalEntradas = totais.inNormal + totais.inPequena;
-  const totalSaidas = totais.outNormal + totais.outPequena;
-  const saldoMes = totalEntradas - totalSaidas;
+  const saldoMesKg = totaisMes.entradasKg - totaisMes.saidasKg;
+  const estimativaSacasMes = Math.floor(saldoMesKg / 50);
 
   // Formatação de data BR (dd/mm/aaaa)
   const formatarData = (dataStr) => {
@@ -110,35 +133,32 @@ export default function PainelCliente({ cliente, onVoltar }) {
     return dataStr;
   };
 
-  // Ação de Compartilhar Resumo (WhatsApp / Web Share API)
-  const handleCompartilhar = async () => {
-    const textoResumo = `*Moagem Atílio - Relatório de Sacarias*
-Cliente: *${cliente}*
-Período: *${MESES[mesSelecionado - 1]}/${anoSelecionado}*
+  // Ação de Gerar / Compartilhar Relatório PDF
+  const handleGerarPdf = async (forcarDownload = false) => {
+    try {
+      setGerandoPdf(true);
+      setErro('');
+      const resultado = await exportarOuCompartilharPdf({
+        cliente,
+        mes: mesSelecionado,
+        ano: anoSelecionado,
+        movimentacoes,
+        totaisMes,
+        saldoMesKg,
+        forcarDownload
+      });
 
-📦 *MOVIMENTAÇÃO DO MÊS:*
-• ENTRADA: ${totalEntradas}
-• SAÍDA: ${totalSaidas}
-
-⚖️ *SALDO DO MÊS:* ${saldoMes}
-
-Total de movimentações no mês: ${movimentacoes.length}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Relatório de Sacarias - ${cliente}`,
-          text: textoResumo,
-        });
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.warn('Erro no share:', err);
-        }
+      if (resultado.method === 'share') {
+        setFeedbackAcao('Relatório PDF compartilhado com sucesso!');
+      } else if (resultado.method === 'download' || resultado.method === 'download_fallback') {
+        setFeedbackAcao('Download do relatório PDF iniciado!');
       }
-    } else {
-      navigator.clipboard.writeText(textoResumo);
-      setFeedbackAcao('Relatório copiado para a área de transferência!');
-      setTimeout(() => setFeedbackAcao(''), 3000);
+      setTimeout(() => setFeedbackAcao(''), 3500);
+    } catch (err) {
+      console.error('Erro ao processar relatório PDF:', err);
+      setErro('Não foi possível gerar o arquivo PDF.');
+    } finally {
+      setGerandoPdf(false);
     }
   };
 
@@ -158,7 +178,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
 
   // Sucesso de criação/edição
   const handleSucessoMovimentacao = (resultado) => {
-    carregarMovimentacoes();
+    carregarDados();
     setFeedbackAcao(resultado?.editado ? 'Alterações salvas com sucesso!' : 'Movimentação registrada com sucesso!');
     setTimeout(() => setFeedbackAcao(''), 3500);
   };
@@ -172,7 +192,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
       setMovimentacaoParaExcluir(null);
       setFeedbackAcao('Registro apagado com sucesso!');
       setTimeout(() => setFeedbackAcao(''), 3500);
-      await carregarMovimentacoes();
+      await carregarDados();
     } catch (err) {
       console.error('Erro ao excluir movimentação:', err);
       setErro('Não foi possível excluir o registro. Verifique a conexão.');
@@ -185,7 +205,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
     <div className="max-w-2xl mx-auto px-4 py-3 pb-safe space-y-4 bg-white text-black min-h-[calc(100vh-65px)]">
 
       {/* Cabeçalho do Cliente com Botão Voltar */}
-      <div className="flex items-center justify-between no-print pt-1">
+      <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-2.5">
           <button
             onClick={onVoltar}
@@ -205,7 +225,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         </div>
 
         <button
-          onClick={carregarMovimentacoes}
+          onClick={carregarDados}
           className="p-3 rounded-xl bg-slate-100 hover:bg-slate-200 border-2 border-slate-400 text-black touch-btn shadow-sm"
           title="Recarregar dados"
         >
@@ -213,8 +233,8 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         </button>
       </div>
 
-      {/* Botões de Ação Superior: [↓ REGISTRAR ENTRADA] e [↑ REGISTRAR SAÍDA] (WCAG AAA) */}
-      <div className="grid grid-cols-2 gap-3 no-print">
+      {/* Botões de Ação Superior posicionados logo abaixo do cabeçalho */}
+      <div className="grid grid-cols-2 gap-3">
 
         {/* Botão Verde Profundo [↓ REGISTRAR ENTRADA] (Base #15803D) */}
         <button
@@ -245,7 +265,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
       </div>
 
       {/* Filtro Mensal e Navegação de Data */}
-      <div className="bg-white border-2 border-slate-300 rounded-xl p-3 shadow-sm no-print">
+      <div className="bg-white border-2 border-slate-300 rounded-xl p-3 shadow-sm">
         <div className="flex items-center justify-between">
           <button
             onClick={irParaMesAnterior}
@@ -274,7 +294,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
 
       {/* Mensagem de Feedback Temporária */}
       {feedbackAcao && (
-        <div className="p-3.5 bg-emerald-100 border-2 border-emerald-800 text-emerald-950 text-sm font-black rounded-xl flex items-center gap-2.5 shadow-sm no-print animate-in fade-in">
+        <div className="p-3.5 bg-emerald-100 border-2 border-emerald-800 text-emerald-950 text-sm font-black rounded-xl flex items-center gap-2.5 shadow-sm animate-in fade-in">
           <Check className="w-5 h-5 text-emerald-800 stroke-[3]" />
           <span>{feedbackAcao}</span>
         </div>
@@ -282,20 +302,11 @@ Total de movimentações no mês: ${movimentacoes.length}`;
 
       {/* Mensagem de Erro se houver */}
       {erro && (
-        <div className="p-3.5 bg-red-100 border-2 border-red-800 text-red-950 text-sm font-black rounded-xl flex items-center gap-2.5 shadow-sm no-print">
+        <div className="p-3.5 bg-red-100 border-2 border-red-800 text-red-950 text-sm font-black rounded-xl flex items-center gap-2.5 shadow-sm">
           <AlertTriangle className="w-5 h-5 text-red-800 stroke-[2.5]" />
           <span>{erro}</span>
         </div>
       )}
-
-      {/* Relatório para Impressão */}
-      <div className="hidden print:block mb-4">
-        <div className="border-b-2 border-black pb-2 mb-4">
-          <h1 className="text-2xl font-black text-black">Moagem Atílio - Relatório de Sacarias</h1>
-          <p className="text-sm text-black">Cliente: <strong>{cliente}</strong> | Período: <strong>{MESES[mesSelecionado - 1]}/{anoSelecionado}</strong></p>
-          <p className="text-xs text-black">Emitido em: {new Date().toLocaleDateString('pt-BR')}</p>
-        </div>
-      </div>
 
       {/* Lista de Movimentações (Cartões com Fundo Branco e Borda Sólida Cinza Escura) */}
       <div className="space-y-3">
@@ -303,7 +314,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
             Movimentações do Período ({movimentacoes.length})
           </h3>
-          <span className="text-xs text-slate-700 font-bold no-print">
+          <span className="text-xs text-slate-700 font-bold">
             Toque no cartão para editar
           </span>
         </div>
@@ -324,10 +335,10 @@ Total de movimentações no mês: ${movimentacoes.length}`;
             </p>
           </div>
         ) : (
-          /* Espaçamento generoso entre cartões */
           <div className="space-y-3.5 sm:space-y-4">
             {movimentacoes.map((mov) => {
               const isOut = mov.tipo_movimentacao === 'OUT';
+              const pesoKg = extrairPesoKg(mov);
               const temDocs = mov.documentos && mov.documentos.length > 0;
 
               return (
@@ -340,9 +351,8 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                   }`}
                   title="Toque para editar este registro"
                 >
-                  {/* Tipo com Badge Visual Duplo e Quantidade em Destaque Preto Gigante */}
+                  {/* Badge Visual e Detalhes da Movimentação */}
                   <div className="flex items-center gap-3.5">
-                    {/* Badge sem borda com fundo branco para contraste limpo */}
                     <div className={`px-2.5 py-2 rounded-lg flex flex-col items-center justify-center min-w-[72px] shadow-sm ${isOut
                       ? 'bg-white text-[#B91C1C]'
                       : 'bg-white text-[#15803D]'
@@ -354,16 +364,26 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-2">
-                        {/* Quantidade em Destaque Preto Gigante (WCAG AAA) */}
-                        <span className="text-2xl font-black text-black">
-                          {mov.quantidade} <span className="text-xs font-bold text-slate-700">sacas</span>
-                        </span>
-                        {/* Tipo de Sacaria em Badge de Contorno Nítido */}
-                        <span className="px-2 py-0.5 rounded-md text-xs font-black uppercase bg-white border-2 border-slate-300 text-black shadow-xs">
-                          {mov.tipo_sacaria}
-                        </span>
-                      </div>
+                      {!isOut ? (
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-xl sm:text-2xl font-black text-black">
+                            {pesoKg.toLocaleString('pt-BR')} kg
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-black uppercase bg-white border-2 border-emerald-300 text-emerald-950 shadow-xs">
+                            Granel
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-baseline gap-1.5">
+                          <span className="text-xl sm:text-2xl font-black text-black">
+                            {mov.quantidade} {mov.quantidade === 1 ? 'saca' : 'sacas'}
+                          </span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-800">
+                            ({mov.tipo_sacaria === 'pequena' ? 'Pequena' : 'Normal'} - {pesoKg.toLocaleString('pt-BR')} kg)
+                          </span>
+                        </div>
+                      )}
+
                       <p className="text-xs text-slate-700 mt-1 flex items-center gap-1.5 font-bold">
                         <Calendar className="w-3.5 h-3.5 text-slate-600" />
                         <span>{formatarData(mov.data_movimentacao)}</span>
@@ -371,7 +391,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                     </div>
                   </div>
 
-                  {/* Lado Direito: Anexos e Botão de Lixeira (Mínimo 48x48px) */}
+                  {/* Lado Direito: Anexos e Botão de Lixeira */}
                   <div className="flex items-center gap-2.5">
                     {temDocs && (
                       <button
@@ -389,7 +409,6 @@ Total de movimentações no mês: ${movimentacoes.length}`;
                       </button>
                     )}
 
-                    {/* Botão de Lixeira com Ícone Cinza e Área de Toque de 48x48px */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -409,42 +428,83 @@ Total de movimentações no mês: ${movimentacoes.length}`;
         )}
       </div>
 
-      {/* Saldo do Mês - Layout com Borda Sólida e Destaque Conforme Desenho */}
-      <div className="bg-white border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4 print-card">
+      {/* Card de Fechamento: Balanço do Mês e Destaque CRÉDITO */}
+      <div className="bg-white border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
 
         {/* Mês e Ano de Referência */}
-        <div className="text-left">
+        <div className="flex items-center justify-between">
           <span className="text-sm sm:text-base font-black tracking-wider text-slate-900 uppercase">
-            {MESES[mesSelecionado - 1]}/{anoSelecionado}
+            Balanço de {MESES[mesSelecionado - 1]}/{anoSelecionado}
+          </span>
+          <span className="text-xs font-bold text-slate-600">
+            {movimentacoes.length} {movimentacoes.length === 1 ? 'registro' : 'registros'}
           </span>
         </div>
 
-        {/* Caixa de Destaque com tom amarelado pastel opaco (mesmo tom do ícone de imprimir) */}
-        <div className="bg-amber-100 border-2 border-amber-200/80 rounded-xl py-7 px-4 sm:py-8 sm:px-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center shadow-sm">
-          <span className="text-xl sm:text-2xl md:text-3xl font-black text-black tracking-wide uppercase">
-            SALDO DO MÊS:
+        {/* Resumo em 2 colunas: Entradas do mês e Saídas do mês */}
+        <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
+          <div className="p-3 rounded-xl bg-emerald-50 border-2 border-emerald-200">
+            <span className="text-emerald-900 block text-[11px] uppercase font-black">Entradas no Mês</span>
+            <span className="text-base sm:text-lg font-black text-black">
+              {totaisMes.entradasKg.toLocaleString('pt-BR')} kg
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-red-50 border-2 border-red-200">
+            <span className="text-red-900 block text-[11px] uppercase font-black">Saídas no Mês</span>
+            <span className="text-base sm:text-lg font-black text-black">
+              {totaisMes.saidasKg.toLocaleString('pt-BR')} kg
+            </span>
+            <span className="text-[10px] text-slate-600 block">
+              ({totaisMes.totalSacas} sacas retiradas)
+            </span>
+          </div>
+        </div>
+
+        {/* Card Amarelo em Destaque: Nomenclatura CRÉDITO */}
+        <div className="bg-amber-100 border-2 border-amber-300 rounded-xl py-6 px-4 sm:py-7 sm:px-6 flex flex-col items-center justify-center text-center shadow-sm">
+          <span className="text-lg sm:text-xl font-black text-slate-900 tracking-wider uppercase">
+            CRÉDITO
           </span>
-          <span className={`text-3xl sm:text-4xl md:text-5xl font-black ${saldoMes >= 0 ? 'text-black' : 'text-red-700'}`}>
-            {saldoMes}
+          <span className={`text-4xl sm:text-5xl font-black mt-1 ${saldoMesKg >= 0 ? 'text-black' : 'text-red-700'}`}>
+            {saldoMesKg >= 0 ? '+' : ''}{saldoMesKg.toLocaleString('pt-BR')} kg
+          </span>
+          <span className="text-xs sm:text-sm font-bold text-slate-700 mt-1">
+            Equivalente a cerca de {estimativaSacasMes} sacas normais (50kg)
           </span>
         </div>
 
-        {/* Botões de Ação: Compartilhar e Imprimir */}
-        <div className="grid grid-cols-2 gap-3 pt-1 no-print">
+        {/* Botões de Ação: Compartilhar PDF e Baixar PDF */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
           <button
-            onClick={handleCompartilhar}
-            className="h-14 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 border-2 border-slate-400 text-black font-black text-base flex items-center justify-center gap-2.5 touch-btn transition-colors shadow-sm"
+            type="button"
+            disabled={gerandoPdf}
+            onClick={() => handleGerarPdf(false)}
+            className="h-14 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 touch-btn transition-colors shadow-md border-2 border-emerald-900 disabled:opacity-70"
+            title="Compartilhar relatório em PDF"
           >
-            <Share2 className="w-5 h-5 text-emerald-800 stroke-[2.5]" />
-            <span>Compartilhar</span>
+            {gerandoPdf ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Gerando...</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-5 h-5 stroke-[2.5]" />
+                <span>Compartilhar PDF</span>
+              </>
+            )}
           </button>
 
           <button
-            onClick={() => window.print()}
-            className="h-14 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 border-2 border-slate-400 text-black font-black text-base flex items-center justify-center gap-2.5 touch-btn transition-colors shadow-sm"
+            type="button"
+            disabled={gerandoPdf}
+            onClick={() => handleGerarPdf(true)}
+            className="h-14 rounded-xl bg-white hover:bg-slate-100 active:bg-slate-200 border-2 border-slate-400 text-black font-black text-sm sm:text-base flex items-center justify-center gap-2 touch-btn transition-colors shadow-sm disabled:opacity-70"
+            title="Baixar arquivo PDF diretamente"
           >
-            <Printer className="w-5 h-5 text-amber-700 stroke-[2.5]" />
-            <span>Imprimir</span>
+            <FileDown className="w-5 h-5 text-amber-700 stroke-[2.5]" />
+            <span>Baixar PDF</span>
           </button>
         </div>
 
@@ -483,17 +543,19 @@ Total de movimentações no mês: ${movimentacoes.length}`;
             </div>
 
             {/* Resumo do registro com alto contraste */}
-            <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-300 space-y-1.5 text-black font-bold text-sm">
+            <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-300 space-y-2 text-black font-bold text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-slate-700">Operação:</span>
-                <span className={movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? 'text-[#15803D]' : 'text-[#B91C1C]'}>
-                  {movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? '↓ ENTRADA' : '↑ SAÍDA'}
+                <span className={movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? 'text-[#15803D] font-black' : 'text-[#B91C1C] font-black'}>
+                  {movimentacaoParaExcluir.tipo_movimentacao === 'IN' ? '↓ ENTRADA (Granel)' : '↑ SAÍDA (Ensaque)'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-700">Quantidade:</span>
+                <span className="text-slate-700">Quantidade / Peso:</span>
                 <span className="text-black text-base font-black">
-                  {movimentacaoParaExcluir.quantidade} sacas ({movimentacaoParaExcluir.tipo_sacaria})
+                  {movimentacaoParaExcluir.tipo_movimentacao === 'IN'
+                    ? `${extrairPesoKg(movimentacaoParaExcluir).toLocaleString('pt-BR')} kg`
+                    : `${movimentacaoParaExcluir.quantidade} sacas (${movimentacaoParaExcluir.tipo_sacaria === 'pequena' ? 'Pequena' : 'Normal'} - ${extrairPesoKg(movimentacaoParaExcluir).toLocaleString('pt-BR')} kg)`}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -504,7 +566,7 @@ Total de movimentações no mês: ${movimentacoes.length}`;
               </div>
             </div>
 
-            {/* Dois botões grandes: Cancelar (Cinza Escuro) e Sim, Apagar (Vermelho Escuro) */}
+            {/* Dois botões grandes: Cancelar e Sim, Apagar */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"

@@ -4,12 +4,12 @@ import {
   Camera,
   Upload,
   Calendar,
-  Trash2,
   CheckCircle2,
   Loader2,
   ArrowDown,
   ArrowUp,
-  FileText
+  FileText,
+  Scale
 } from 'lucide-react';
 import { uploadComprovante, registrarMovimentacao, atualizarMovimentacao } from '../lib/supabase';
 
@@ -26,8 +26,8 @@ export default function MovimentacaoModal({
   const ehEdicao = Boolean(movimentacaoParaEditar);
   const hoje = new Date().toISOString().split('T')[0];
 
-  const [tipoMovimentacao, setTipoMovimentacao] = useState(tipoInicial); // 'IN' ou 'OUT' (definido na chamada dinâmica)
-  const [tipoSacaria, setTipoSacaria] = useState('normal'); // 'normal' ou 'pequena'
+  const [tipoMovimentacao, setTipoMovimentacao] = useState(tipoInicial); // 'IN' ou 'OUT'
+  const [tipoSacaria, setTipoSacaria] = useState('normal'); // 'normal' ou 'pequena' (apenas para OUT)
   const [quantidade, setQuantidade] = useState('');
   const [dataMovimentacao, setDataMovimentacao] = useState(hoje);
   const [documentosUrls, setDocumentosUrls] = useState([]); // URLs salvas
@@ -41,9 +41,18 @@ export default function MovimentacaoModal({
   // Inicializa ou sincroniza campos se for edição ou nova movimentação
   useEffect(() => {
     if (movimentacaoParaEditar) {
-      setTipoMovimentacao(movimentacaoParaEditar.tipo_movimentacao || 'OUT');
-      setTipoSacaria(movimentacaoParaEditar.tipo_sacaria || 'normal');
-      setQuantidade(movimentacaoParaEditar.quantidade ? String(movimentacaoParaEditar.quantidade) : '');
+      const tipo = movimentacaoParaEditar.tipo_movimentacao || 'OUT';
+      setTipoMovimentacao(tipo);
+      setTipoSacaria(movimentacaoParaEditar.tipo_sacaria === 'pequena' ? 'pequena' : 'normal');
+
+      // Se for entrada, a quantidade é o peso em kg
+      if (tipo === 'IN') {
+        const pesoKg = movimentacaoParaEditar.peso_kg || movimentacaoParaEditar.quantidade || '';
+        setQuantidade(pesoKg ? String(pesoKg) : '');
+      } else {
+        setQuantidade(movimentacaoParaEditar.quantidade ? String(movimentacaoParaEditar.quantidade) : '');
+      }
+
       setDataMovimentacao(movimentacaoParaEditar.data_movimentacao || hoje);
       setDocumentosUrls(movimentacaoParaEditar.documentos || []);
       setArquivosParaUpload([]);
@@ -58,6 +67,19 @@ export default function MovimentacaoModal({
       setErro('');
     }
   }, [isOpen, movimentacaoParaEditar, tipoInicial]);
+
+  const isOut = tipoMovimentacao === 'OUT';
+
+  // Incremento rápido
+  const incrementarQuantidade = (valor) => {
+    const atual = parseInt(quantidade, 10) || 0;
+    setQuantidade(String(atual + valor));
+    if (erro) setErro('');
+  };
+
+  // Cálculo de abatimento em tempo real para SAÍDA
+  const qtdSacasNum = parseInt(quantidade, 10) || 0;
+  const pesoAbatidoKg = qtdSacasNum * (tipoSacaria === 'pequena' ? 25 : 50);
 
   // Processa seleção de arquivos (Câmera ou Galeria)
   const handleFilesSelected = async (e) => {
@@ -87,12 +109,12 @@ export default function MovimentacaoModal({
     setDocumentosUrls(prev => prev.filter(url => url !== urlParaRemover));
   };
 
-  // Submissão consciente do formulário
+  // Submissão do formulário
   const handleSalvar = async () => {
     const qtdNum = parseInt(quantidade, 10);
 
     if (!qtdNum || qtdNum <= 0) {
-      setErro('Informe uma quantidade válida (maior que 0).');
+      setErro(isOut ? 'Informe uma quantidade válida de sacas (maior que 0).' : 'Informe um peso recebido válido em quilos (maior que 0).');
       return;
     }
 
@@ -111,11 +133,18 @@ export default function MovimentacaoModal({
     setErro('');
 
     try {
+      // Regra de negócio:
+      // ENTRADA: tipo_sacaria = 'granel', quantidade = peso em kg, peso_kg = peso em kg
+      // SAÍDA: tipo_sacaria = 'normal' ou 'pequena', quantidade = sacas, peso_kg = sacas * (50 ou 25)
+      const sacariaFinal = isOut ? tipoSacaria : 'granel';
+      const pesoKgFinal = isOut ? qtdNum * (tipoSacaria === 'pequena' ? 25 : 50) : qtdNum;
+
       if (ehEdicao) {
         await atualizarMovimentacao(movimentacaoParaEditar.id, {
           tipo_movimentacao: tipoMovimentacao,
-          tipo_sacaria: tipoSacaria,
+          tipo_sacaria: sacariaFinal,
           quantidade: qtdNum,
+          peso_kg: pesoKgFinal,
           data_movimentacao: dataMovimentacao,
           documentos: documentosUrls
         });
@@ -125,15 +154,17 @@ export default function MovimentacaoModal({
           id: movimentacaoParaEditar.id,
           cliente,
           tipo_movimentacao: tipoMovimentacao,
-          tipo_sacaria: tipoSacaria,
-          quantidade: qtdNum
+          tipo_sacaria: sacariaFinal,
+          quantidade: qtdNum,
+          peso_kg: pesoKgFinal
         });
       } else {
         await registrarMovimentacao({
           cliente,
           tipo_movimentacao: tipoMovimentacao,
-          tipo_sacaria: tipoSacaria,
+          tipo_sacaria: sacariaFinal,
           quantidade: qtdNum,
+          peso_kg: pesoKgFinal,
           data_movimentacao: dataMovimentacao,
           documentos: documentosUrls
         });
@@ -142,8 +173,9 @@ export default function MovimentacaoModal({
           editado: false,
           cliente,
           tipo_movimentacao: tipoMovimentacao,
-          tipo_sacaria: tipoSacaria,
-          quantidade: qtdNum
+          tipo_sacaria: sacariaFinal,
+          quantidade: qtdNum,
+          peso_kg: pesoKgFinal
         });
       }
       onClose();
@@ -154,8 +186,6 @@ export default function MovimentacaoModal({
       setSalvando(false);
     }
   };
-
-  const isOut = tipoMovimentacao === 'OUT';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
@@ -179,10 +209,10 @@ export default function MovimentacaoModal({
             </div>
             <p className="text-xs font-bold text-slate-700 mt-1">
               {ehEdicao
-                ? 'Editar registro de sacarias'
+                ? `Editar registro de ${isOut ? 'saída ensacada' : 'entrada de milho a granel'}`
                 : isOut
-                  ? 'Sacarias enviadas ao cliente'
-                  : 'Sacarias devolvidas pelo cliente'}
+                  ? 'Retirada de sacas do saldo do cliente'
+                  : 'Recebimento de carga de milho a granel'}
             </p>
           </div>
 
@@ -199,74 +229,176 @@ export default function MovimentacaoModal({
         {/* Formulário com Scroll */}
         <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-y-auto p-5 space-y-5 bg-white">
 
-          {/* Seleção do Tipo de Sacaria: Dois Botões Seletores Gigantes */}
-          <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
-              Tipo de Sacaria
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTipoSacaria('normal')}
-                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${tipoSacaria === 'normal'
-                    ? 'border-black bg-slate-100 text-black shadow-md'
-                    : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
-                  }`}
-              >
-                <span className="text-base font-black tracking-wide">NORMAL</span>
-                <span className="text-xs font-bold text-slate-700">50 kg</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTipoSacaria('pequena')}
-                className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${tipoSacaria === 'pequena'
-                    ? 'border-black bg-slate-100 text-black shadow-md'
-                    : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
-                  }`}
-              >
-                <span className="text-base font-black tracking-wide">PEQUENA</span>
-                <span className="text-xs font-bold text-slate-700">25 kg</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Campo de Quantidade (Estilo Visor de Balança: Caixa Branca com Borda Preta Grossa) */}
-          <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
-              Quantidade de Sacarias
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                inputMode="numeric"
-                min="1"
-                required
-                value={quantidade}
-                onChange={(e) => {
-                  setQuantidade(e.target.value);
-                  if (erro) setErro('');
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                  }
-                }}
-                placeholder="0"
-                className="w-full h-20 text-center text-4xl font-black rounded-lg bg-white border-3 border-black text-black placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-300 shadow-inner"
-              />
-              {quantidade && (
+          {/* SAÍDA: Seleção do Tipo de Sacaria (NORMAL 50kg / PEQUENA 25kg) */}
+          {isOut ? (
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
+                Tipo de Sacaria
+              </label>
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setQuantidade('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 px-3.5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black text-black border border-slate-400 shadow-sm"
+                  onClick={() => setTipoSacaria('normal')}
+                  className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${tipoSacaria === 'normal'
+                      ? 'border-black bg-slate-100 text-black shadow-md ring-2 ring-black/10'
+                      : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
+                    }`}
                 >
-                  Limpar
+                  <span className="text-base font-black tracking-wide">NORMAL</span>
+                  <span className="text-xs font-bold text-slate-700">50 kg</span>
                 </button>
-              )}
+
+                <button
+                  type="button"
+                  onClick={() => setTipoSacaria('pequena')}
+                  className={`h-16 rounded-xl border-3 flex flex-col items-center justify-center font-black transition-all touch-btn ${tipoSacaria === 'pequena'
+                      ? 'border-black bg-slate-100 text-black shadow-md ring-2 ring-black/10'
+                      : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
+                    }`}
+                >
+                  <span className="text-base font-black tracking-wide">PEQUENA</span>
+                  <span className="text-xs font-bold text-slate-700">25 kg</span>
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {/* ENTRADA: Campo de PESO RECEBIDO (EM QUILOS) */}
+          {!isOut && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <Scale className="w-4 h-4 text-emerald-800" />
+                  <span>PESO RECEBIDO (EM QUILOS)</span>
+                </label>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                  Milho a granel
+                </span>
+              </div>
+
+              {/* Visor Numérico de Balança em Destaque */}
+              <div className="relative">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  required
+                  value={quantidade}
+                  onChange={(e) => {
+                    setQuantidade(e.target.value);
+                    if (erro) setErro('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="0"
+                  className="w-full h-20 text-center text-4xl font-black rounded-xl bg-white border-3 border-black text-black placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-emerald-200 shadow-inner pr-14"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-black text-slate-600 pointer-events-none">
+                  kg
+                </span>
+                {quantidade && (
+                  <button
+                    type="button"
+                    onClick={() => setQuantidade('')}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black text-black border border-slate-400 shadow-sm"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
+              {/* Botões de Incremento Rápido para Cargas Maiores: +100 kg, +500 kg, +1.000 kg, +5.000 kg */}
+              <div className="grid grid-cols-4 gap-2 mt-2.5">
+                {[100, 500, 1000, 5000].map((peso) => (
+                  <button
+                    key={peso}
+                    type="button"
+                    onClick={() => incrementarQuantidade(peso)}
+                    className="py-2.5 px-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 border-2 border-emerald-300 text-emerald-950 font-black text-xs sm:text-sm touch-btn shadow-xs transition-colors"
+                  >
+                    +{peso >= 1000 ? `${peso / 1000}.000` : peso} kg
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SAÍDA: Campo de QUANTIDADE DE SACAS */}
+          {isOut && (
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
+                QUANTIDADE DE SACAS
+              </label>
+
+              {/* Visor Numérico de Sacas */}
+              <div className="relative">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  required
+                  value={quantidade}
+                  onChange={(e) => {
+                    setQuantidade(e.target.value);
+                    if (erro) setErro('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="0"
+                  className="w-full h-20 text-center text-4xl font-black rounded-xl bg-white border-3 border-black text-black placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-red-200 shadow-inner pr-16"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm sm:text-base font-black text-slate-600 pointer-events-none">
+                  sacas
+                </span>
+                {quantidade && (
+                  <button
+                    type="button"
+                    onClick={() => setQuantidade('')}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black text-black border border-slate-400 shadow-sm"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
+              {/* Botões de Incremento Rápido de Sacas */}
+              <div className="grid grid-cols-4 gap-2 mt-2.5">
+                {[5, 10, 20, 50].map((sacos) => (
+                  <button
+                    key={sacos}
+                    type="button"
+                    onClick={() => incrementarQuantidade(sacos)}
+                    className="py-2.5 px-1 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border-2 border-slate-300 text-black font-black text-xs sm:text-sm touch-btn shadow-xs transition-colors"
+                  >
+                    +{sacos}
+                  </button>
+                ))}
+              </div>
+
+              {/* Cálculo do Abatimento em Tempo Real */}
+              <div className="mt-3 p-3.5 rounded-xl bg-amber-50 border-2 border-amber-300 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                    Abatimento do saldo:
+                  </span>
+                  <span className="text-base sm:text-lg font-black text-red-700">
+                    Abate {pesoAbatidoKg.toLocaleString('pt-BR')} kg do saldo
+                  </span>
+                </div>
+                <p className="text-[11px] font-semibold text-slate-600 mt-0.5">
+                  {qtdSacasNum} {qtdSacasNum === 1 ? 'saca' : 'sacas'} de {tipoSacaria === 'pequena' ? '25 kg' : '50 kg'} = {pesoAbatidoKg.toLocaleString('pt-BR')} kg
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Campo de Data */}
           <div>
@@ -285,11 +417,13 @@ export default function MovimentacaoModal({
             </div>
           </div>
 
-          {/* Gerenciamento de Documentos e Comprovantes */}
+          {/* Gerenciamento de Documentos e Comprovantes (Ticket de Pesagem / Nota Fiscal) */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-xs font-black uppercase tracking-wider text-slate-900">
-                Comprovantes Anexados ({documentosUrls.length + arquivosParaUpload.length})
+                {isOut
+                  ? `Comprovantes / Canhotos (${documentosUrls.length + arquivosParaUpload.length})`
+                  : `Ticket de Pesagem / Nota Fiscal (${documentosUrls.length + arquivosParaUpload.length})`}
               </label>
               <span className="text-xs text-slate-600 font-bold">Opcional</span>
             </div>
@@ -397,7 +531,7 @@ export default function MovimentacaoModal({
             type="button"
             disabled={salvando}
             onClick={handleSalvar}
-            className={`w-full h-16 sm:h-18 rounded-xl font-black text-xl uppercase tracking-wide flex items-center justify-center gap-3 shadow-md border-2 transition-all touch-btn ${ehEdicao
+            className={`w-full h-16 sm:h-18 rounded-xl font-black text-lg sm:text-xl uppercase tracking-wide flex items-center justify-center gap-3 shadow-md border-2 transition-all touch-btn ${ehEdicao
                 ? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 border-amber-800 text-white'
                 : isOut
                   ? 'bg-[#B91C1C] hover:bg-red-800 active:bg-red-900 border-red-950 text-white'
@@ -416,8 +550,8 @@ export default function MovimentacaoModal({
                   {ehEdicao
                     ? 'SALVAR ALTERAÇÕES'
                     : isOut
-                      ? 'CONFIRMAR SAÍDA'
-                      : 'CONFIRMAR ENTRADA'}
+                      ? 'CONFIRMAR SAÍDA DE SACAS'
+                      : 'CONFIRMAR ENTRADA DE MILHO'}
                 </span>
               </>
             )}

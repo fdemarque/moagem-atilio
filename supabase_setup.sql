@@ -26,17 +26,29 @@ CREATE TABLE IF NOT EXISTS clientes (
     criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Tabela de Movimentações de Sacaria
+-- 3. Tabela de Movimentações de Sacaria / Granel
 CREATE TABLE IF NOT EXISTS movimentacoes_sacaria (
     id SERIAL PRIMARY KEY,
     cliente VARCHAR(150) NOT NULL,
     tipo_movimentacao VARCHAR(3) NOT NULL CHECK (tipo_movimentacao IN ('IN', 'OUT')),
-    tipo_sacaria VARCHAR(10) NOT NULL CHECK (tipo_sacaria IN ('normal', 'pequena')),
+    tipo_sacaria VARCHAR(10) CHECK (tipo_sacaria IN ('normal', 'pequena', 'granel')),
     quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+    peso_kg INTEGER NOT NULL DEFAULT 0 CHECK (peso_kg >= 0),
     data_movimentacao DATE NOT NULL DEFAULT CURRENT_DATE,
     documentos TEXT[] DEFAULT '{}',
     criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Garantir coluna peso_kg caso a tabela já tenha sido criada anteriormente
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'movimentacoes_sacaria' AND column_name = 'peso_kg'
+    ) THEN
+        ALTER TABLE movimentacoes_sacaria ADD COLUMN peso_kg INTEGER NOT NULL DEFAULT 0;
+    END IF;
+END $$;
 
 -- Índices recomendados para desempenho
 CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes (nome);
