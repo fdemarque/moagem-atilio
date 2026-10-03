@@ -211,7 +211,7 @@ export default function MovimentacaoModal({
               {ehEdicao
                 ? `Editar registro de ${isOut ? 'saída ensacada' : 'entrada de milho a granel'}`
                 : isOut
-                  ? 'Retirada de sacas do saldo do cliente'
+                  ? 'Retirada de sacas do crédito do cliente'
                   : 'Recebimento de carga de milho a granel'}
             </p>
           </div>
@@ -387,10 +387,10 @@ export default function MovimentacaoModal({
               <div className="mt-3 p-3.5 rounded-xl bg-amber-50 border-2 border-amber-300 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-amber-950 uppercase tracking-wide">
-                    Abatimento do saldo:
+                    Abatimento do crédito:
                   </span>
                   <span className="text-base sm:text-lg font-black text-red-700">
-                    Abate {pesoAbatidoKg.toLocaleString('pt-BR')} kg do saldo
+                    Abate {pesoAbatidoKg.toLocaleString('pt-BR')} kg do crédito
                   </span>
                 </div>
                 <p className="text-[11px] font-semibold text-slate-600 mt-0.5">

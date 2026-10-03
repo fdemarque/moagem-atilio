@@ -101,7 +101,7 @@ export default function Clientes({ onSelectCliente, onNovoClienteCadastrado }) {
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-emerald-800 stroke-[2.5]" />
           <h2 className="text-xs font-black uppercase tracking-wider text-slate-900">
-            Clientes em Estoque ({clientesFiltrados.length})
+            Clientes Cadastrados ({clientesFiltrados.length})
           </h2>
         </div>
         <button
@@ -156,8 +156,8 @@ export default function Clientes({ onSelectCliente, onNovoClienteCadastrado }) {
       ) : (
         <div className="space-y-3">
           {clientesFiltrados.map((cli) => {
-            const saldoNormal = cli.saldoNormal || 0;
-            const saldoPequena = cli.saldoPequena || 0;
+            const creditoNormal = cli.creditoNormal || 0;
+            const creditoPequena = cli.creditoPequena || 0;
 
             return (
               <div
@@ -182,16 +182,16 @@ export default function Clientes({ onSelectCliente, onNovoClienteCadastrado }) {
                   </div>
                 </div>
 
-                {/* Saldo de Estoque em Destaque no Cartão */}
+                {/* Crédito em Destaque no Cartão */}
                 <div className="mt-3 pt-3 border-t-2 border-slate-200 flex items-center justify-between">
                   <div>
                     <span className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                      Saldo Disponível
+                      Crédito
                     </span>
                     <div className={`text-xl sm:text-2xl font-black ${
-                      (cli.saldoTotalKg || 0) >= 0 ? 'text-black' : 'text-red-600'
+                      (cli.creditoTotalKg ?? cli.saldoTotalKg ?? 0) >= 0 ? 'text-black' : 'text-red-600'
                     }`}>
-                      {(cli.saldoTotalKg || 0).toLocaleString('pt-BR')} <span className="text-sm font-extrabold text-slate-700">kg</span>
+                      {(cli.creditoTotalKg ?? cli.saldoTotalKg ?? 0).toLocaleString('pt-BR')} <span className="text-sm font-extrabold text-slate-700">kg</span>
                     </div>
                   </div>
 

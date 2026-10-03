@@ -323,11 +323,14 @@ export async function buscarClientesComResumo() {
       nome,
       totalMovimentacoes: 0,
       ultimaMovimentacao: null,
-      saldoTotalKg: 0,
+      creditoTotalKg: 0,
+      saldoTotalKg: 0, // mantido para compatibilidade
       estimativaSacas: 0,
       totalEntradasKg: 0,
       totalSaidasKg: 0,
+      creditoNormal: 0,
       saldoNormal: 0,
+      creditoPequena: 0,
       saldoPequena: 0,
       totalInNormal: 0,
       totalOutNormal: 0,
@@ -343,11 +346,14 @@ export async function buscarClientesComResumo() {
         nome,
         totalMovimentacoes: 0,
         ultimaMovimentacao: mov.data_movimentacao,
+        creditoTotalKg: 0,
         saldoTotalKg: 0,
         estimativaSacas: 0,
         totalEntradasKg: 0,
         totalSaidasKg: 0,
+        creditoNormal: 0,
         saldoNormal: 0,
+        creditoPequena: 0,
         saldoPequena: 0,
         totalInNormal: 0,
         totalOutNormal: 0,
@@ -363,79 +369,130 @@ export async function buscarClientesComResumo() {
 
     const peso = extrairPesoKg(mov);
     const qtd = mov.quantidade || 0;
+    const dataMov = mov.data_movimentacao;
 
     if (mov.tipo_movimentacao === 'IN') {
       clientesMap[nome].totalEntradasKg += peso;
-      clientesMap[nome].saldoTotalKg += peso;
       if (mov.tipo_sacaria === 'normal') {
         clientesMap[nome].totalInNormal += qtd;
+        clientesMap[nome].creditoNormal -= qtd;
         clientesMap[nome].saldoNormal -= qtd;
       } else if (mov.tipo_sacaria === 'pequena') {
         clientesMap[nome].totalInPequena += qtd;
+        clientesMap[nome].creditoPequena -= qtd;
         clientesMap[nome].saldoPequena -= qtd;
       }
     } else {
-      // OUT (Saída de sacas abatendo peso)
+      // OUT (Saída de sacas abatendo peso do crédito)
       clientesMap[nome].totalSaidasKg += peso;
-      clientesMap[nome].saldoTotalKg -= peso;
       if (mov.tipo_sacaria === 'normal') {
         clientesMap[nome].totalOutNormal += qtd;
+        clientesMap[nome].creditoNormal += qtd;
         clientesMap[nome].saldoNormal += qtd;
       } else if (mov.tipo_sacaria === 'pequena') {
         clientesMap[nome].totalOutPequena += qtd;
+        clientesMap[nome].creditoPequena += qtd;
         clientesMap[nome].saldoPequena += qtd;
       }
     }
 
-    clientesMap[nome].estimativaSacas = Math.floor(clientesMap[nome].saldoTotalKg / 50);
+    // Acumula crédito considerando a base de Outubro/2026 (validada pelo cliente)
+    // e movimentações futuras a partir de Novembro/2026
+    if (clientesMap[nome].inOutubro === undefined) {
+      clientesMap[nome].inOutubro = 0;
+      clientesMap[nome].outOutubro = 0;
+      clientesMap[nome].inPos = 0;
+      clientesMap[nome].outPos = 0;
+      clientesMap[nome].inPre = 0;
+      clientesMap[nome].outPre = 0;
+    }
+
+    if (dataMov && dataMov.startsWith('2026-10')) {
+      if (mov.tipo_movimentacao === 'IN') clientesMap[nome].inOutubro += peso;
+      else clientesMap[nome].outOutubro += peso;
+    } else if (dataMov && dataMov > '2026-10-31') {
+      if (mov.tipo_movimentacao === 'IN') clientesMap[nome].inPos += peso;
+      else clientesMap[nome].outPos += peso;
+    } else {
+      if (mov.tipo_movimentacao === 'IN') clientesMap[nome].inPre += peso;
+      else clientesMap[nome].outPre += peso;
+    }
+  });
+
+  todosNomes.forEach(nome => {
+    const c = clientesMap[nome];
+    const temOutubroOuDepois = (c.inOutubro > 0 || c.outOutubro > 0 || c.inPos > 0 || c.outPos > 0);
+    if (temOutubroOuDepois) {
+      c.creditoTotalKg = (c.inOutubro - c.outOutubro) + (c.inPos - c.outPos);
+    } else {
+      c.creditoTotalKg = c.inPre - c.outPre;
+    }
+    c.saldoTotalKg = c.creditoTotalKg;
+    c.estimativaSacas = Math.floor(c.creditoTotalKg / 50);
   });
 
   return Object.values(clientesMap).sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
 /**
- * Obtém o saldo cumulativo total de um cliente (todas as movimentações)
+ * Obtém o crédito cumulativo total de um cliente
+ * Reflete o crédito validado em Outubro/2026 acrescido de todas as movimentações futuras
  */
-export async function obterSaldoTotalCliente(cliente) {
+export async function obterCreditoTotalCliente(cliente) {
   const { data, error } = await supabase
     .from('movimentacoes_sacaria')
     .select('*')
     .eq('cliente', cliente.trim());
 
   if (error) {
-    console.error('Erro ao obter saldo total do cliente:', error);
+    console.error('Erro ao obter crédito total do cliente:', error);
     throw error;
   }
 
-  let totalEntradasKg = 0;
-  let totalSaidasKg = 0;
+  let inOutubro = 0, outOutubro = 0;
+  let inPos = 0, outPos = 0;
+  let inPre = 0, outPre = 0;
+  let temOutubroOuDepois = false;
 
   (data || []).forEach(mov => {
     const peso = extrairPesoKg(mov);
-    if (mov.tipo_movimentacao === 'IN') {
-      totalEntradasKg += peso;
+    const dataMov = mov.data_movimentacao;
+
+    if (dataMov && dataMov.startsWith('2026-10')) {
+      temOutubroOuDepois = true;
+      if (mov.tipo_movimentacao === 'IN') inOutubro += peso;
+      else outOutubro += peso;
+    } else if (dataMov && dataMov > '2026-10-31') {
+      temOutubroOuDepois = true;
+      if (mov.tipo_movimentacao === 'IN') inPos += peso;
+      else outPos += peso;
     } else {
-      totalSaidasKg += peso;
+      if (mov.tipo_movimentacao === 'IN') inPre += peso;
+      else outPre += peso;
     }
   });
 
-  const saldoTotalKg = totalEntradasKg - totalSaidasKg;
-  const estimativaSacas = Math.floor(saldoTotalKg / 50);
+  const creditoTotalKg = temOutubroOuDepois
+    ? (inOutubro - outOutubro) + (inPos - outPos)
+    : (inPre - outPre);
+
+  const estimativaSacas = Math.floor(creditoTotalKg / 50);
 
   return {
-    saldoTotalKg,
+    creditoTotalKg,
+    saldoTotalKg: creditoTotalKg,
     estimativaSacas,
-    totalEntradasKg,
-    totalSaidasKg,
     totalMovimentacoes: (data || []).length
   };
 }
+
+// Alias para preservar compatibilidade com código existente
+export const obterSaldoTotalCliente = obterCreditoTotalCliente;
 
 /**
  * Busca movimentações de um cliente em um determinado mês e ano
  */
 export async function buscarMovimentacoesMensais(cliente, mes, ano) {
-  // Gera datas limites do mês selecionado
   const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
   const ultimoDia = new Date(ano, mes, 0).getDate();
   const dataFim = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
@@ -443,7 +500,7 @@ export async function buscarMovimentacoesMensais(cliente, mes, ano) {
   const { data, error } = await supabase
     .from('movimentacoes_sacaria')
     .select('*')
-    .eq('cliente', cliente)
+    .eq('cliente', cliente.trim())
     .gte('data_movimentacao', dataInicio)
     .lte('data_movimentacao', dataFim)
     .order('data_movimentacao', { ascending: false })
@@ -455,4 +512,65 @@ export async function buscarMovimentacoesMensais(cliente, mes, ano) {
   }
 
   return data || [];
+}
+
+/**
+ * Obtém todos os dados mensais com rollover automático para os próximos meses:
+ * - Movimentações do mês selecionado
+ * - Crédito anterior contínuo (virada automática do mês sem zerar a partir de Novembro/2026)
+ * - Mês base validado: Outubro/2026
+ */
+export async function obterDadosMensaisCliente(cliente, mes, ano) {
+  const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const dataFim = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+
+  // 1. Busca movimentações do mês selecionado
+  const { data: movimentacoesMes, error: errMes } = await supabase
+    .from('movimentacoes_sacaria')
+    .select('*')
+    .eq('cliente', cliente.trim())
+    .gte('data_movimentacao', dataInicio)
+    .lte('data_movimentacao', dataFim)
+    .order('data_movimentacao', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (errMes) {
+    console.error('Erro ao buscar movimentações do mês:', errMes);
+    throw errMes;
+  }
+
+  // 2. Rollover automático: a partir de Novembro/2026, herda o crédito contínuo
+  let creditoAnteriorKg = 0;
+  const ehMesFuturoOuNovo = (ano > 2026) || (ano === 2026 && mes > 10);
+
+  if (ehMesFuturoOuNovo) {
+    // Busca todas as movimentações desde Outubro/2026 até o início do mês corrente
+    const { data: movsBase, error: errBase } = await supabase
+      .from('movimentacoes_sacaria')
+      .select('*')
+      .eq('cliente', cliente.trim())
+      .gte('data_movimentacao', '2026-10-01')
+      .lt('data_movimentacao', dataInicio);
+
+    if (errBase) {
+      console.error('Erro ao calcular crédito acumulado anterior:', errBase);
+      throw errBase;
+    }
+
+    (movsBase || []).forEach(m => {
+      const peso = extrairPesoKg(m);
+      if (m.tipo_movimentacao === 'IN') {
+        creditoAnteriorKg += peso;
+      } else {
+        creditoAnteriorKg -= peso;
+      }
+    });
+  }
+
+  return {
+    movimentacoes: movimentacoesMes || [],
+    creditoAnteriorKg,
+    temRollover: ehMesFuturoOuNovo
+  };
 }

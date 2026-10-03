@@ -19,7 +19,17 @@ function formatarData(dataStr) {
 /**
  * Gera um documento PDF estruturado com tabelas de entradas, saídas e resumo de crédito.
  */
-export function gerarRelatorioMensalPdf({ cliente, mes, ano, movimentacoes, totaisMes, saldoMesKg }) {
+export function gerarRelatorioMensalPdf({ 
+  cliente, 
+  mes, 
+  ano, 
+  movimentacoes, 
+  totaisMes, 
+  creditoAnteriorKg = 0,
+  creditoMesKg,
+  saldoMesKg 
+}) {
+  const valorCreditoFinal = creditoMesKg !== undefined ? creditoMesKg : (saldoMesKg || 0);
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -185,14 +195,14 @@ export function gerarRelatorioMensalPdf({ cliente, mes, ano, movimentacoes, tota
     yPos = 20;
   }
 
-  // 5. Quadro de Fechamento (Resumo do Crédito)
-  const estimativaSacas = Math.floor(saldoMesKg / 50);
+  // 5. Quadro de Fechamento (Resumo do Crédito com Rollover)
+  const estimativaSacas = Math.floor(valorCreditoFinal / 50);
 
   // Fundo do box de fechamento
   doc.setFillColor(254, 249, 195); // Amarelo suave pastel (#FEF9C3 / amber-100)
   doc.setDrawColor(217, 119, 6); // amber-600 borda
   doc.setLineWidth(0.6);
-  doc.roundedRect(14, yPos, 210 - 28, 38, 3, 3, 'FD');
+  doc.roundedRect(14, yPos, 210 - 28, 44, 3, 3, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
@@ -200,30 +210,36 @@ export function gerarRelatorioMensalPdf({ cliente, mes, ano, movimentacoes, tota
   doc.text('RESUMO DO CRÉDITO DO CLIENTE (FECHAMENTO DO MÊS)', 20, yPos + 7);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Total Entradas: ${totaisMes.entradasKg.toLocaleString('pt-BR')} kg`, 20, yPos + 15);
-  doc.text(`Total Saídas: ${totaisMes.saidasKg.toLocaleString('pt-BR')} kg (${totaisMes.totalSacas} sacas)`, 20, yPos + 21);
+  doc.text(`Crédito Anterior (Mês Anterior): ${creditoAnteriorKg >= 0 ? '+' : ''}${creditoAnteriorKg.toLocaleString('pt-BR')} kg`, 20, yPos + 14);
+  doc.text(`Total Entradas no Mês: +${totaisMes.entradasKg.toLocaleString('pt-BR')} kg`, 20, yPos + 20);
+  doc.text(`Total Saídas no Mês: -${totaisMes.saidasKg.toLocaleString('pt-BR')} kg (${totaisMes.totalSacas} sacas)`, 20, yPos + 26);
+
+  // Linha divisória sutil
+  doc.setDrawColor(245, 158, 11);
+  doc.setLineWidth(0.3);
+  doc.line(20, yPos + 29, 190, yPos + 29);
 
   // Valor em destaque
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text('CRÉDITO DISPONÍVEL (kg):', 20, yPos + 30);
+  doc.text('CRÉDITO DISPONÍVEL (kg):', 20, yPos + 38);
 
   doc.setFontSize(14);
-  if (saldoMesKg >= 0) {
+  if (valorCreditoFinal >= 0) {
     doc.setTextColor(21, 128, 61); // verde
-    doc.text(`${saldoMesKg.toLocaleString('pt-BR')} kg`, 82, yPos + 30);
+    doc.text(`${valorCreditoFinal.toLocaleString('pt-BR')} kg`, 84, yPos + 38);
   } else {
     doc.setTextColor(185, 28, 28); // vermelho
-    doc.text(`${saldoMesKg.toLocaleString('pt-BR')} kg`, 82, yPos + 30);
+    doc.text(`${valorCreditoFinal.toLocaleString('pt-BR')} kg`, 84, yPos + 38);
   }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
-  doc.text(`(Equivalente a cerca de ${estimativaSacas} sacas de 50kg)`, 135, yPos + 30);
+  doc.text(`(Equivalente a cerca de ${estimativaSacas} sacas de 50kg)`, 135, yPos + 38);
 
   // Rodapé da página
   const totalPages = doc.getNumberOfPages();
@@ -232,7 +248,7 @@ export function gerarRelatorioMensalPdf({ cliente, mes, ano, movimentacoes, tota
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `Moagem Atílio - Relatório Mensal de Estoque | Página ${i} de ${totalPages}`,
+      `Moagem Atílio - Relatório Mensal de Crédito | Página ${i} de ${totalPages}`,
       105,
       290,
       { align: 'center' }
@@ -252,6 +268,8 @@ export async function exportarOuCompartilharPdf({
   ano,
   movimentacoes,
   totaisMes,
+  creditoAnteriorKg = 0,
+  creditoMesKg,
   saldoMesKg,
   forcarDownload = false
 }) {
@@ -261,6 +279,8 @@ export async function exportarOuCompartilharPdf({
     ano,
     movimentacoes,
     totaisMes,
+    creditoAnteriorKg,
+    creditoMesKg,
     saldoMesKg
   });
 

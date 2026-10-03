@@ -18,7 +18,8 @@ import {
 import {
   buscarMovimentacoesMensais,
   deletarMovimentacao,
-  obterSaldoTotalCliente,
+  obterDadosMensaisCliente,
+  obterCreditoTotalCliente,
   extrairPesoKg
 } from '../lib/supabase';
 import { exportarOuCompartilharPdf } from '../utils/relatorioPdf';
@@ -36,7 +37,9 @@ export default function PainelCliente({ cliente, onVoltar }) {
   const [anoSelecionado, setAnoSelecionado] = useState(dataAtual.getFullYear());
 
   const [movimentacoes, setMovimentacoes] = useState([]);
-  const [saldoGeral, setSaldoGeral] = useState({
+  const [creditoAnteriorKg, setCreditoAnteriorKg] = useState(0);
+  const [creditoGeral, setCreditoGeral] = useState({
+    creditoTotalKg: 0,
     saldoTotalKg: 0,
     estimativaSacas: 0,
     totalEntradasKg: 0,
@@ -61,12 +64,13 @@ export default function PainelCliente({ cliente, onVoltar }) {
     setCarregando(true);
     setErro('');
     try {
-      const [dadosMensais, saldoTotal] = await Promise.all([
-        buscarMovimentacoesMensais(cliente, mesSelecionado, anoSelecionado),
-        obterSaldoTotalCliente(cliente)
+      const [dadosMensaisRes, creditoTotal] = await Promise.all([
+        obterDadosMensaisCliente(cliente, mesSelecionado, anoSelecionado),
+        obterCreditoTotalCliente(cliente)
       ]);
-      setMovimentacoes(dadosMensais);
-      setSaldoGeral(saldoTotal);
+      setMovimentacoes(dadosMensaisRes.movimentacoes);
+      setCreditoAnteriorKg(dadosMensaisRes.creditoAnteriorKg);
+      setCreditoGeral(creditoTotal);
     } catch (err) {
       console.error('Erro ao carregar dados do cliente:', err);
       setErro('Falha ao obter movimentações deste período.');
@@ -120,8 +124,9 @@ export default function PainelCliente({ cliente, onVoltar }) {
     { entradasKg: 0, saidasKg: 0, totalSacas: 0, sacasNormais: 0, sacasPequenas: 0 }
   );
 
-  const saldoMesKg = totaisMes.entradasKg - totaisMes.saidasKg;
-  const estimativaSacasMes = Math.floor(saldoMesKg / 50);
+  const creditoMesKg = creditoAnteriorKg + totaisMes.entradasKg - totaisMes.saidasKg;
+  const estimativaSacasMes = Math.floor(creditoMesKg / 50);
+  const mesAnteriorNome = mesSelecionado === 1 ? 'Dezembro' : MESES[mesSelecionado - 2];
 
   // Formatação de data BR (dd/mm/aaaa)
   const formatarData = (dataStr) => {
@@ -144,7 +149,9 @@ export default function PainelCliente({ cliente, onVoltar }) {
         ano: anoSelecionado,
         movimentacoes,
         totaisMes,
-        saldoMesKg,
+        creditoAnteriorKg,
+        creditoMesKg,
+        saldoMesKg: creditoMesKg, // retrocompatibilidade
         forcarDownload
       });
 
@@ -441,37 +448,79 @@ export default function PainelCliente({ cliente, onVoltar }) {
           </span>
         </div>
 
-        {/* Resumo em 2 colunas: Entradas do mês e Saídas do mês */}
-        <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
-          <div className="p-3 rounded-xl bg-emerald-50 border-2 border-emerald-200">
-            <span className="text-emerald-900 block text-[11px] uppercase font-black">Entradas no Mês</span>
-            <span className="text-base sm:text-lg font-black text-black">
-              {totaisMes.entradasKg.toLocaleString('pt-BR')} kg
-            </span>
-          </div>
+        {/* Resumo do Período */}
+        {creditoAnteriorKg !== 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-bold">
+            <div className="p-3 rounded-xl bg-slate-100 border-2 border-slate-300">
+              <span className="text-slate-700 block text-[11px] uppercase font-black">Crédito Anterior</span>
+              <span className={`text-base sm:text-lg font-black ${creditoAnteriorKg >= 0 ? 'text-black' : 'text-red-700'}`}>
+                {creditoAnteriorKg >= 0 ? '+' : ''}{creditoAnteriorKg.toLocaleString('pt-BR')} kg
+              </span>
+              <span className="text-[10px] text-slate-500 block">
+                Até o fim de {mesAnteriorNome}
+              </span>
+            </div>
 
-          <div className="p-3 rounded-xl bg-red-50 border-2 border-red-200">
-            <span className="text-red-900 block text-[11px] uppercase font-black">Saídas no Mês</span>
-            <span className="text-base sm:text-lg font-black text-black">
-              {totaisMes.saidasKg.toLocaleString('pt-BR')} kg
-            </span>
-            <span className="text-[10px] text-slate-600 block">
-              ({totaisMes.totalSacas} sacas retiradas)
-            </span>
+            <div className="p-3 rounded-xl bg-emerald-50 border-2 border-emerald-200">
+              <span className="text-emerald-900 block text-[11px] uppercase font-black">Entradas no Mês</span>
+              <span className="text-base sm:text-lg font-black text-black">
+                +{totaisMes.entradasKg.toLocaleString('pt-BR')} kg
+              </span>
+              <span className="text-[10px] text-emerald-700 block">
+                Cargas recebidas
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-red-50 border-2 border-red-200">
+              <span className="text-red-900 block text-[11px] uppercase font-black">Saídas no Mês</span>
+              <span className="text-base sm:text-lg font-black text-black">
+                -{totaisMes.saidasKg.toLocaleString('pt-BR')} kg
+              </span>
+              <span className="text-[10px] text-red-700 block">
+                ({totaisMes.totalSacas} sacas retiradas)
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
+            <div className="p-3 rounded-xl bg-emerald-50 border-2 border-emerald-200">
+              <span className="text-emerald-900 block text-[11px] uppercase font-black">Entradas no Mês</span>
+              <span className="text-base sm:text-lg font-black text-black">
+                +{totaisMes.entradasKg.toLocaleString('pt-BR')} kg
+              </span>
+              <span className="text-[10px] text-emerald-700 block">
+                Cargas recebidas
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-red-50 border-2 border-red-200">
+              <span className="text-red-900 block text-[11px] uppercase font-black">Saídas no Mês</span>
+              <span className="text-base sm:text-lg font-black text-black">
+                -{totaisMes.saidasKg.toLocaleString('pt-BR')} kg
+              </span>
+              <span className="text-[10px] text-red-700 block">
+                ({totaisMes.totalSacas} sacas retiradas)
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Card Amarelo em Destaque: Nomenclatura CRÉDITO */}
         <div className="bg-amber-100 border-2 border-amber-300 rounded-xl py-6 px-4 sm:py-7 sm:px-6 flex flex-col items-center justify-center text-center shadow-sm">
           <span className="text-lg sm:text-xl font-black text-slate-900 tracking-wider uppercase">
             CRÉDITO
           </span>
-          <span className={`text-4xl sm:text-5xl font-black mt-1 ${saldoMesKg >= 0 ? 'text-black' : 'text-red-700'}`}>
-            {saldoMesKg >= 0 ? '+' : ''}{saldoMesKg.toLocaleString('pt-BR')} kg
+          <span className={`text-4xl sm:text-5xl font-black mt-1 ${creditoMesKg >= 0 ? 'text-black' : 'text-red-700'}`}>
+            {creditoMesKg >= 0 ? '+' : ''}{creditoMesKg.toLocaleString('pt-BR')} kg
           </span>
           <span className="text-xs sm:text-sm font-bold text-slate-700 mt-1">
             Equivalente a cerca de {estimativaSacasMes} sacas normais (50kg)
           </span>
+          {creditoAnteriorKg !== 0 && (
+            <span className="text-[11px] font-bold text-amber-950/80 mt-1.5">
+              ({mesAnteriorNome}: {creditoAnteriorKg >= 0 ? '+' : ''}{creditoAnteriorKg.toLocaleString('pt-BR')} kg + Entradas: {totaisMes.entradasKg.toLocaleString('pt-BR')} kg - Saídas: {totaisMes.saidasKg.toLocaleString('pt-BR')} kg)
+            </span>
+          )}
         </div>
 
         {/* Botões de Ação: Compartilhar PDF e Baixar PDF */}
