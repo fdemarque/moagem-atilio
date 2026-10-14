@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import session from '../api/session.js';
 import sync from '../api/sync.js';
 import maintenance from '../api/maintenance.js';
-const routes={'/api/session':session,'/api/sync':sync,'/api/maintenance':maintenance};
+const routes={'/api/session':session.fetch,'/api/sync':sync.fetch,'/api/maintenance':maintenance.fetch};
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.woff2':'font/woff2'};
 const port=Number(process.env.LOCAL_PORT || 4173),root=path.resolve('dist');
 http.createServer(async(req,res)=>{

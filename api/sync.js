@@ -2,7 +2,7 @@ import { authorized, json, sameOrigin, safeFailure } from '../server/http.js';
 import { getRuntime } from '../server/runtime.js';
 import { validateDocument } from '../src/lib/document.js';
 const uuid=/^[a-f0-9-]{36}$/i;
-export default async function handler(request) {
+async function handler(request) {
   if(!authorized(request)) return json({error:'Conecte este aparelho para enviar a cópia.'},401);
   if(!sameOrigin(request)) return json({error:'Origem inválida.'},403);
   if(request.method!=='POST') return json({error:'Método inválido.'},405);
@@ -34,3 +34,4 @@ export default async function handler(request) {
     return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode(JSON.stringify(result)));controller.close();}}),{headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
   } catch(error) {return safeFailure(error);}
 }
+export default {fetch:handler};

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import session from '../api/session.js';
-import sync from '../api/sync.js';
-import maintenance from '../api/maintenance.js';
+import sessionEntry from '../api/session.js';
+import syncEntry from '../api/sync.js';
+import maintenanceEntry from '../api/maintenance.js';
+const session=sessionEntry.fetch,sync=syncEntry.fetch,maintenance=maintenanceEntry.fetch;
 test('endpoints privados rejeitam acesso sem sessão e origem externa',async()=>{
   process.env.SESSION_SECRET='test-only-secret-'.repeat(4);process.env.MOAGEM_PASSWORD='test-only-password';process.env.CRON_SECRET='test-only-cron';
   assert.equal((await sync(new Request('https://moinho.test/api/sync',{method:'POST'}))).status,401);

@@ -47,7 +47,7 @@ Cada registro possui `uuid` e `updated_at`. Movimentações também possuem `mod
 
 A sincronização envia automaticamente o documento local após uma alteração e ao reconectar, e consulta a versão remota a cada minuto. O documento local é a fila durável; uma falha não apaga lançamentos pendentes. As ferramentas **Exportar dados JSON**, **Compartilhar backup JSON** e **Importar dados JSON** ficam em **Configurações → Manutenção**, fora do fluxo diário do usuário. A importação valida todo o arquivo antes de escrever, soma UUIDs novos e usa Last-Write-Wins por registro. Em empates, prioriza exclusão e usa comparação canônica determinística. Campos desconhecidos de registros legados são preservados. Exclusões usam `deleted_at`; backups antigos não ressuscitam registros apagados. Mantenha data e hora dos aparelhos corretas para a comparação de versões.
 
-A implementação, configuração e evidências da Vercel, Drive e arquivamento estão em [ARMAZENAMENTO-AUTOMATICO.md](./ARMAZENAMENTO-AUTOMATICO.md). O ambiente local foi validado contra serviços reais. O agendamento de produção só será ativado pelo futuro deploy aprovado. A rotina diária verifica backups e arquiva a cada seis meses, preservando versões, exclusões, créditos e o histórico offline. A retenção elimina apenas snapshots redundantes antigos na Vercel, mantendo o atual, pelo menos duas cópias e seis meses; não elimina arquivos históricos.
+A implementação, configuração e evidências da Vercel, Drive e arquivamento estão em [ARMAZENAMENTO-AUTOMATICO.md](./ARMAZENAMENTO-AUTOMATICO.md). O ambiente local foi validado contra serviços reais. O agendamento diário é ativado na publicação de produção. A rotina diária verifica backups e arquiva a cada seis meses, preservando versões, exclusões, créditos e o histórico offline. A retenção elimina apenas snapshots redundantes antigos na Vercel, mantendo o atual, pelo menos duas cópias e seis meses; não elimina arquivos históricos.
 
 Leitura, backup e escrita ocorrem na mesma transação IndexedDB. As transações são serializadas entre abas. Falhas de validação ou falta de espaço abortam a transação inteira. A interface só informa sucesso após a conclusão da gravação. BroadcastChannel e atualização ao retornar à aba mantêm as telas atualizadas.
 
@@ -61,7 +61,7 @@ No primeiro acesso, a nova versão faz backup dos valores brutos de `moagem_clie
 
 Foi preparado, com autorização do usuário, um snapshot privado em `backups/legado-original.json` e sua conversão em `backups/moagem-migracao-validada.json`. O snapshot contém 119 movimentações, quatro cadastros de clientes e cinco nomes de clientes ao incluir movimentos. Não há comprovantes nessa base. Todos os campos originais foram comparados com a versão convertida. Essa pasta é ignorada pelo Git e não é copiada para `dist`.
 
-**Antes do futuro merge/deploy:**
+**Procedimento de publicação e conferência:**
 
 1. Interromper temporariamente novos lançamentos na versão antiga e obter um export final atualizado, pois o snapshot de 13/10/2026 não contém lançamentos posteriores.
 2. Validar contagens, créditos por cliente e eventual presença de fotos. A base antiga não possui timestamp de edição; o export consolidado fornece a data de referência da migração.
@@ -86,6 +86,6 @@ Foram identificados dois projetos Vercel conectados a esse mesmo repositório, a
 - `moagem-atilio`: https://moagem-atilio.vercel.app
 - `fdemarque-moagem-atilio`: https://fdemarque-moagem-atilio.vercel.app
 
-Esta evolução fica em `codex/local-first-tres-modulos`. `vercel.json` desativa deployments automáticos somente dessa branch, conforme https://vercel.com/docs/project-configuration/git-configuration. Também explicita o framework Vite, build e pasta `dist`. Nenhum merge ou deploy é autorizado nesta etapa.
+Esta evolução fica em `codex/local-first-tres-modulos`. `vercel.json` desativa deployments automáticos somente dessa branch, conforme https://vercel.com/docs/project-configuration/git-configuration. Também explicita o framework Vite, build e pasta `dist`. A publicação na main e na Vercel foi autorizada em 14/10/2026. A main anterior, commit `805ce813dc4ce4883fe30af50877a36a9609f4c8`, está preservada na branch `codex/backup-main-2026-10-14`.
 
 Os documentos públicos ficam no GitHub Pages, publicado somente a partir de `/docs` desta branch: [privacidade](https://fdemarque.github.io/moagem-atilio/privacidade.html) e [termos](https://fdemarque.github.io/moagem-atilio/termos.html). Isso não publica o PWA na Vercel. Para atualizar essas páginas, editar `PRIVACIDADE.md`/`TERMOS.md`, executar `node scripts/legal-pages.js` e publicar os arquivos gerados junto dos fontes.
