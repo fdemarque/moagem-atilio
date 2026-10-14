@@ -2,6 +2,7 @@ backups/
 test-results/
 node_modules/
 .git/
+.vercel/
 .agents/
 .env
 .env.*
