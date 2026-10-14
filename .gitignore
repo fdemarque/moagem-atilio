@@ -1,5 +1,8 @@
 # Dependências
 node_modules/
+backups/
+.vercel/
+test-results/
 /.pnp
 .pnp.js
 

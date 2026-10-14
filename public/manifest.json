@@ -1,12 +1,12 @@
 {
-  "name": "Moagem Atílio - Controle de Sacarias",
-  "short_name": "Sacarias",
-  "description": "Controle rápido e simplificado de movimentação de sacarias em estoque e clientes",
+  "name": "Moagem Atílio - Controle de Estoque",
+  "short_name": "Moagem Atílio",
+  "description": "Estoque de milho, sacarias vazias e soja, disponível offline.",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0f172a",
+  "background_color": "#f6f8f5",
   "theme_color": "#16a34a",
   "lang": "pt-BR",
   "icons": [
@@ -28,5 +28,6 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "scope": "/"
 }
