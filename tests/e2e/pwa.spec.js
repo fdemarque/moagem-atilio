@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { emptyDocument, migrateLegacy } from '../../src/lib/document.js';
 const fixture=migrateLegacy({clientes:['Cliente preservado'],movimentacoes:[{id:42,cliente:'Cliente preservado',tipo_movimentacao:'IN',tipo_sacaria:'granel',quantidade:1000,peso_kg:1000,data_movimentacao:'2026-10-01',documentos:[]}]});
 async function importJson(page,value) {
+ if(!await page.getByLabel('Importar dados JSON').isVisible()) await page.getByRole('button',{name:'Configurações',exact:true}).click();
  await page.getByLabel('Importar dados JSON').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(typeof value==='string'?value:JSON.stringify(value))});
 }
 test('PWA offline: migração, módulos, CRUD, anexos, relatórios e JSON',async({page,context})=>{
@@ -9,7 +10,10 @@ test('PWA offline: migração, módulos, CRUD, anexos, relatórios e JSON',async
  const external=[];page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4173') && !r.url().startsWith('data:'))external.push(r.url());});
  await page.addInitScript(()=>localStorage.setItem('moagem_clientes_cadastrados','["Nome local antigo"]'));
  await page.goto('/');await expect(page.getByRole('heading',{name:'O que vamos registrar?'})).toBeVisible();
- await expect(page.getByText('Aplicativo pronto para abrir offline.')).toBeVisible();
+ await expect(page.getByText(/Funciona sem internet/)).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Seus dados'})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Usar sem internet'})).toHaveCount(0);
+ await expect(page.getByLabel('Importar dados JSON')).toHaveCount(0);
  await importJson(page,fixture);await expect(page.getByText(/Importação concluída/)).toBeVisible();
  await page.getByRole('button',{name:'Milho',exact:false}).first().click();
  await page.getByRole('button',{name:/Cliente preservado/}).click();
@@ -41,6 +45,7 @@ test('PWA offline: migração, módulos, CRUD, anexos, relatórios e JSON',async
   await page.getByRole('button',{name:'Início',exact:true}).click();
  }
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Baixar relatório geral'}).click();expect((await download).suggestedFilename()).toBe('moagem-geral-2026-10.pdf');
+ await page.getByRole('button',{name:'Configurações',exact:true}).click();
  const backup=page.waitForEvent('download');await page.getByRole('button',{name:'Exportar dados JSON'}).click();expect((await backup).suggestedFilename()).toMatch(/\.json$/);
  await page.reload();await expect(page.getByText('3 registros · 2 clientes')).toBeVisible();
  await page.screenshot({path:'test-results/home-390.png',fullPage:true});

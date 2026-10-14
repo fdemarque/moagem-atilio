@@ -14,7 +14,8 @@ export default function App() {
   const [module,setModule] = useState(null), [client,setClient] = useState(null), [search,setSearch] = useState('');
   const [month,setMonth] = useState(localToday().slice(0,7)), [modal,setModal] = useState(null);
   const [newName,setNewName] = useState(''), [busy,setBusy] = useState(false);
-  const [install,setInstall] = useState(null), [offlineReady,setOfflineReady] = useState(false), [persistent,setPersistent] = useState(false);
+  const [install,setInstall] = useState(null), [offlineReady,setOfflineReady] = useState(false);
+  const [maintenance,setMaintenance] = useState(false);
   const [updateWorker,setUpdateWorker] = useState(null);
   useEffect(() => {
     initializeStorage().then(setState).catch(err => setError(`Não foi possível abrir os dados: ${err.message}`));
@@ -28,23 +29,18 @@ export default function App() {
     const readyHandler = () => setOfflineReady(true); window.addEventListener('moagem-offline-ready',readyHandler);
     const updateHandler = event => setUpdateWorker(event.detail); window.addEventListener('moagem-update-ready',updateHandler);
     if(import.meta.env.PROD) navigator.serviceWorker?.ready.then(() => setOfflineReady(true)).catch(() => {});
-    navigator.storage?.persisted?.().then(setPersistent).catch(() => {});
     return () => { window.removeEventListener('moagem-change',refresh); window.removeEventListener('moagem-change',announce); window.removeEventListener('focus',refresh); window.removeEventListener('beforeinstallprompt',installHandler); window.removeEventListener('moagem-offline-ready',readyHandler); window.removeEventListener('moagem-update-ready',updateHandler); channel?.close(); };
   }, []);
   async function action(work, success) {
     setError(''); setBusy(true);
     try { await work(); if(success) setNotice(success); } catch(err) { setError(err.message || 'Não foi possível concluir. Tente novamente.'); } finally { setBusy(false); }
   }
-  async function persist() {
-    const granted = await navigator.storage?.persist?.(); setPersistent(Boolean(granted));
-    setNotice(granted ? 'Armazenamento persistente autorizado.' : 'O navegador não autorizou a proteção. Faça backups em arquivo regularmente.');
-  }
   const rows = state?.payload.movimentacoes.filter(r => !r.deleted_at) || [];
   const names = [...new Set([...(state?.payload.clientes.filter(c => !c.deleted_at).map(c => c.nome) || []),...rows.map(r => r.cliente)])].sort((a,b) => a.localeCompare(b,'pt-BR'));
   const balance = module ? monthlyBalance(rows.filter(r => r.cliente === client),module,month) : null;
   async function pdf(key,person,share=false) { const { exportReport } = await import('./utils/reports.js'); await exportReport(state,month,key,person,share); }
   function moveMonth(delta) { const [year,m] = month.split('-').map(Number); const date = new Date(year,m-1+delta,1); setMonth(`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`); }
-  function goHome() { setModule(null); setClient(null); setSearch(''); setError(''); }
+  function goHome() { setModule(null); setClient(null); setSearch(''); setError(''); setMaintenance(false); }
   async function exportJson(share=false) {
     const file=jsonFile(await readDocument());
     if(share && navigator.canShare?.({files:[file]})) {try {await navigator.share({files:[file],title:'Backup Moagem Atílio'});return;} catch(err){if(err.name === 'AbortError') return;}}
@@ -64,15 +60,18 @@ export default function App() {
         <div><p className="eyebrow">Bem-vindo ao moinho</p><h1>O que vamos registrar?</h1><p className="muted">Toque no produto para ver clientes e estoque.</p></div>
         <div className="module-list">{MODULES.map(key => { const Icon = icons[key]; return <button className={`module-card ${key}`} key={key} onClick={() => {setModule(key);setSearch('');}}><span className="module-icon"><Icon size={38} strokeWidth={2} /></span><span><strong>{titles[key]}</strong><small>{descriptions[key]}</small></span><ChevronRight aria-hidden="true" /></button>; })}</div>
         <section className="card stack"><h2>Relatório geral</h2><p className="muted">Milho, sacarias e soja em um único PDF.</p><label>Mês do relatório<input aria-label="Mês do relatório" type="month" value={month} onChange={e => {if(e.target.value) setMonth(e.target.value);}} /></label><button className="primary" disabled={busy} onClick={() => action(() => pdf(null,null))}><Download /> Baixar relatório geral</button><button className="secondary" disabled={busy} onClick={() => action(() => pdf(null,null,true))}><Share2 /> Compartilhar relatório geral</button></section>
-        <section className="card stack"><h2>Seus dados</h2><p className="muted">Salvos neste aparelho. Para levar a outro aparelho, exporte o backup e importe lá.</p><p>{rows.length} registros · {names.length} clientes</p>
+        <p className="muted">{rows.length} registros · {names.length} clientes<br />{offlineReady ? 'Funciona sem internet. Dados salvos neste aparelho.' : 'Preparando o aplicativo para funcionar sem internet…'}</p>
+        {install && <button className="primary" onClick={() => action(async () => {await install.prompt();await install.userChoice;setInstall(null);await navigator.storage?.persist?.();})}>Instalar aplicativo</button>}
+        <button className="secondary" aria-expanded={maintenance} aria-controls="maintenance-tools" onClick={() => setMaintenance(value => !value)}>{maintenance ? 'Fechar configurações' : 'Configurações'}</button>
+        {maintenance && <section id="maintenance-tools" className="card stack"><h2>Manutenção</h2><p className="muted">Área do responsável pelo aplicativo. A sincronização com a Vercel e o backup no Drive ainda não estão configurados. As ferramentas abaixo permitem preservar os dados durante essa preparação.</p>
           <button className="primary" disabled={busy} onClick={() => action(() => exportJson(),'Backup JSON baixado. Guarde uma cópia em outro lugar.')}><Download /> Exportar dados JSON</button>
           <button className="secondary" disabled={busy} onClick={() => action(() => exportJson(true))}><Share2 /> Compartilhar backup JSON</button>
           <label className="file-button secondary">Importar dados JSON<input type="file" accept=".json,application/json" disabled={busy} onChange={importFile} /></label>
           <p className="muted">A importação soma registros novos e mantém a versão mais recente de cada registro.</p>
           <button className="secondary" disabled={busy} onClick={() => action(async () => {const backups=await listBackups();setModal({kind:'backups',backups:backups.reverse()});})}>Ver backups automáticos</button>
           {!rows.length && <p className="note">Os registros da versão antiga precisam ser importados com o backup completo antes de usar este aparelho.</p>}
-        </section>
-        <section className="card stack"><h2>Usar sem internet</h2><p>{offlineReady ? 'Aplicativo pronto para abrir offline.' : 'Preparando os arquivos para uso offline…'}</p><p className="muted">{persistent ? 'Armazenamento persistente autorizado.' : 'Exporte backups regularmente para proteger seus registros.'}</p><button className="secondary" onClick={() => action(persist)}>Proteger dados neste aparelho</button>{install ? <button className="primary" onClick={() => action(async () => {await install.prompt();await install.userChoice;setInstall(null);await persist();})}>Instalar aplicativo</button> : <p className="muted">Para instalar: no Android, use “Instalar aplicativo” no menu do navegador. No iPhone, abra no Safari e toque em Compartilhar → Adicionar à Tela de Início.</p>}</section>
+          <p className="muted">Para instalar no iPhone: abra no Safari e toque em Compartilhar → Adicionar à Tela de Início. No Android, use “Instalar aplicativo” no menu do navegador.</p>
+        </section>}
       </> : <>
         <button className="back-button" onClick={client ? () => setClient(null) : goHome}><ArrowLeft /> {client ? 'Voltar aos clientes' : 'Trocar produto'}</button>
         <div><p className="eyebrow">{titles[module]}</p><h1>{client || 'Clientes'}</h1></div>

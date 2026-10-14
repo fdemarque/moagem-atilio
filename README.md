@@ -20,7 +20,7 @@ npx.cmd playwright install chromium
 npm.cmd run test:e2e
 ```
 
-Os testes cobrem migração, validação, merge, concorrência, rollback, exclusão e recuperação. O teste Chromium desliga toda a rede após o primeiro carregamento, recarrega o app, registra entradas e saídas, edita, exclui, visualiza comprovantes e gera PDFs sem internet. Também verifica 360/390 px, cache dos chunks de relatórios e ausência de requisições externas.
+Os testes cobrem migração, validação, merge, concorrência, rollback, exclusão e recuperação. O teste Chromium desliga toda a rede após o primeiro carregamento, recarrega o app, registra entradas e saídas, edita, exclui, visualiza comprovantes e gera PDFs sem internet. Também verifica 360/390 px, cache dos chunks de relatórios, ausência de requisições externas e a abertura sem ferramentas técnicas de backup.
 
 ## Regras de estoque
 
@@ -45,7 +45,9 @@ O estado fica no IndexedDB `moagem-atilio-local`, versão 1, store `documents`, 
 
 Cada registro possui `uuid` e `updated_at`. Movimentações também possuem `modulo`, `cliente`, `tipo_movimentacao`, `quantidade`, `data_movimentacao` e `documentos`. Comprovantes são imagens em data URLs incorporadas no JSON, disponíveis offline e incluídas no backup. Fotos novas são limitadas a 8 MB por arquivo; importações a 100 MB.
 
-Não há sincronização automática pela internet. Use **Exportar dados JSON** ou **Compartilhar backup JSON** em um aparelho e **Importar dados JSON** no outro. A importação valida todo o arquivo antes de escrever, soma UUIDs novos e usa Last-Write-Wins por registro. Em empates, prioriza exclusão e usa comparação canônica determinística. Campos desconhecidos de registros legados são preservados. Exclusões usam `deleted_at`; backups antigos não ressuscitam registros apagados. Mantenha data e hora dos aparelhos corretas para a comparação de versões.
+Não há sincronização automática pela internet nesta versão. As ferramentas **Exportar dados JSON**, **Compartilhar backup JSON** e **Importar dados JSON** ficam em **Configurações → Manutenção**, fora do fluxo diário do usuário. A importação valida todo o arquivo antes de escrever, soma UUIDs novos e usa Last-Write-Wins por registro. Em empates, prioriza exclusão e usa comparação canônica determinística. Campos desconhecidos de registros legados são preservados. Exclusões usam `deleted_at`; backups antigos não ressuscitam registros apagados. Mantenha data e hora dos aparelhos corretas para a comparação de versões.
+
+A arquitetura escolhida para salvar automaticamente na Vercel, arquivar movimentos semestralmente e manter cópias numa conta Google dedicada está em [ARMAZENAMENTO-AUTOMATICO.md](./ARMAZENAMENTO-AUTOMATICO.md). Essa integração externa ainda não está implementada nem ativa; o documento distingue as decisões confirmadas do que precisa ser configurado e validado.
 
 Leitura, backup e escrita ocorrem na mesma transação IndexedDB. As transações são serializadas entre abas. Falhas de validação ou falta de espaço abortam a transação inteira. A interface só informa sucesso após a conclusão da gravação. BroadcastChannel e atualização ao retornar à aba mantêm as telas atualizadas.
 
@@ -73,7 +75,7 @@ Nenhum dado real é distribuído publicamente pelo app. Novos dispositivos exibe
 
 Manifest standalone, ícones locais de 192/512 px, identidade mantida e fontes do sistema. `scripts/build-sw.js` calcula uma versão por hash e inclui todos os assets de `dist`, inclusive chunks de PDF, no pré-cache. O service worker atende assets e HTML com Cache-First. Uma instalação com falha de pré-cache não é ativada. Cache de versões anteriores só é limpo no namespace de assets da aplicação; dados e backups em IndexedDB não são apagados.
 
-Uma nova versão aguarda a ação **Atualizar aplicativo**, desabilitada enquanto há formulário aberto ou operação em andamento. O registro solicita `navigator.storage.persist()`; a tela também oferece o botão **Proteger dados neste aparelho**. A concessão depende do navegador. Armazenamento persistente não protege contra limpeza manual, perda do aparelho ou desinstalação: exporte backups para outro local regularmente.
+Uma nova versão aguarda a ação **Atualizar aplicativo**, desabilitada enquanto há formulário aberto ou operação em andamento. O registro solicita `navigator.storage.persist()` automaticamente; não exige ação do usuário para proteger o armazenamento. A concessão depende do navegador. Armazenamento persistente não protege contra limpeza manual, perda do aparelho ou desinstalação: enquanto a integração externa não estiver ativa, o responsável deve exportar backups para outro local regularmente.
 
 ## GitHub e Vercel
 
