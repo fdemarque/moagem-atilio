@@ -26,19 +26,21 @@ export async function changeDocument(transform, reason = null, source = null) {
   return new Promise((resolve,reject) => {
     const tx = db.transaction(['documents','backups'], 'readwrite');
     const store = tx.objectStore('documents'); const request = store.get('state');
-    let result; let failure;
+    let result; let failure; let written=false;
     request.onsuccess = () => {
       try {
         const previous = request.result || emptyDocument();
         validateDocument(previous);
         result = transform(structuredClone(previous));
+        if(result === null) {result=previous;return;}
         if (result?.then) throw new Error('Alteração precisa ser síncrona.');
         result.last_updated = now(); validateDocument(result);
         if (reason) tx.objectStore('backups').add({ created_at: now(), reason, document: previous, source });
         store.put(result, 'state');
+        written=true;
       } catch(error) { failure = error; tx.abort(); }
     };
-    tx.oncomplete = () => { globalThis.dispatchEvent?.(new Event('moagem-change')); resolve(result); };
+    tx.oncomplete = () => { if(written)globalThis.dispatchEvent?.(new Event('moagem-change')); resolve(result); };
     tx.onabort = tx.onerror = () => reject(failure || new Error('Não foi possível salvar. Os dados anteriores foram mantidos. Verifique o espaço livre.'));
   });
 }

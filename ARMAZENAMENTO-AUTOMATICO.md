@@ -1,70 +1,75 @@
-# Armazenamento automático e arquivamento — próxima etapa
+# Armazenamento automático, backups e arquivamento
 
-Este documento registra a arquitetura escolhida em 13/10/2026. O backend descrito abaixo ainda precisa ser implementado e configurado; não existe sincronização externa ativa nesta branch. O código atual continua preservando o IndexedDB e os backups locais. As ferramentas técnicas saíram da abertura e ficam em Configurações → Manutenção. O pedido de armazenamento persistente permanece automático.
+Estado verificado em 14/10/2026. Implementação na branch `codex/local-first-tres-modulos`, sem merge nem deploy do PWA na Vercel.
 
-## Decisões confirmadas pelo usuário
+## Funcionamento implementado
 
-- Persistir documentos JSON privados na Vercel, sem banco SQL/NoSQL.
-- Sincronizar automaticamente ao voltar a ter internet, mantendo funcionamento offline.
-- Arquivar movimentos antigos a cada seis meses sem perder créditos ou histórico.
-- Usar uma conta Google separada para o moinho, com uma pasta exclusiva para o aplicativo e cópias consultáveis em planilhas.
-- Continuar nesta branch. Publicação e merge permanecem pendentes da validação.
+- O IndexedDB guarda o documento completo e as cópias locais antes de migração, edição, exclusão, importação e recuperação. Nenhuma chave legada é apagada.
+- `src/lib/sync.js` envia alterações automaticamente, reenvia ao voltar a ter internet e consulta o estado remoto a cada minuto. A fila é o próprio documento persistido. O merge da resposta lê o estado mais recente dentro da transação, preservando registros criados durante a requisição. Mudanças idênticas não escrevem nem geram ciclos de notificações.
+- `/api/session` autoriza o aparelho com um código forte do responsável, guardado em configuração privada. A sessão usa cookie HttpOnly, SameSite=Strict e Secure em HTTPS, com duração de um ano. Endpoints validam sessão e origem; `/api/maintenance` exige segredo exclusivo do agendamento.
+- `/api/sync` valida o schema, mescla por UUID/timestamp e devolve o documento consolidado. Documentos grandes são enviados em partes privadas menores que o limite de requisição da Vercel. A resposta é transmitida por streaming. Comprovantes permanecem no JSON.
+- `server/blob-files.js` utiliza Blob privado com leituras sem cache e escrita condicional pela versão ETag. A criação usa `allowOverwrite: false`; atualizações usam `ifMatch`. O SDK recebe ETags de entrega com marcador W/ em respostas comprimidas, enquanto o armazenamento usa a mesma revisão sem esse marcador. Essa diferença foi conferida contra `head()` e corrigida; gravações concorrentes reais passaram.
+- `server/document-store.js` mantém um manifesto consolidado, snapshots e históricos imutáveis. Uma disputa de versão relê e repete o merge; falhas de armazenamento não são tratadas como conflitos silenciosos.
+- `server/google-auth.js` renova a autorização Google no servidor. `server/google-backup.js` confere a conta dedicada, grava JSON, confere SHA-256 e cria planilhas com valores literais RAW. A leitura posterior confere as células. Os arquivos históricos vão para a pasta Histórico; planilhas ficam em Planilhas. Falhas não apagam o estado ativo.
+- Nenhuma credencial utiliza prefixo VITE_ ou entra no GitHub, bundle ou service worker. APIs não são cacheadas pelo service worker. Não há chamadas SQL/NoSQL ou ao banco antigo no aplicativo.
 
-## Vercel
+## Rotina automática e retenção
 
-Usar Vercel Blob privado, acessado por funções autenticadas do aplicativo. Arquivos gravados dentro do código publicado ou no disco temporário de uma função não são persistência. As credenciais de Blob ficam exclusivamente no servidor. O acesso do aparelho precisa ser autorizado e lembrado, para evitar login repetitivo e impedir que terceiros leiam ou alterem o estoque.
+`vercel.json` define uma execução diária de `/api/maintenance` às 06:00 UTC. Ela faz o backup consolidado na Vercel e no Drive e verifica se passaram seis meses de calendário desde a criação do manifesto ou o último arquivamento bem-sucedido.
 
-A API lê a versão atual, valida o documento recebido, mescla por UUID/timestamp e escreve com a pré-condição ETag `ifMatch`. Ao detectar outra gravação simultânea, relê e repete o merge. A criação inicial usa `ifNoneMatch: '*'`. O cliente só confirma a sincronização após receber a gravação consolidada. Respostas de dados não entram no cache de assets do service worker.
+Quando vence o período, movimentos anteriores aos seis meses completos mais recentes são separados em documentos por mês. Registros completos, fotos, IDs, timestamps e exclusões são mantidos. Antes de atualizar o manifesto, cada histórico é conferido no Drive e no Blob. O manifesto só muda por escrita condicional depois dessas verificações. Uma falha anterior mantém o documento ativo intacto.
 
-Movimentos registrados offline ficam numa fila persistente. Ao reconectar, o app envia os registros pendentes sem substituir lançamentos de outro aparelho. A sincronização deve ler o estado mais recente do IndexedDB antes de aplicar a resposta, evitando perder uma gravação local feita enquanto a requisição estava em andamento.
+O manifesto registra créditos de abertura por cliente/módulo, calculados com a regra existente do milho e unidades de sacarias/soja. A sincronização reconstitui o documento completo com os históricos; o aparelho conserva todos os registros para consultar e exportar meses antigos offline. Não é realizada limpeza destrutiva do IndexedDB. Um aparelho antigo pode voltar, enviar lançamentos novos e editar registros arquivados: o merge usa os mesmos UUIDs e versões, reconstrói o arquivo mensal e recalcula os créditos. Tombstones continuam disponíveis.
 
-Estados possíveis na interface: “Salvo”, “Salvo neste aparelho — aguardando internet” e “Não foi possível enviar a cópia”. Não exibir JSON, importação, exportação ou permissões de armazenamento como tarefas diárias do usuário.
+Após o backup conferido e a publicação condicional do manifesto, a retenção no Blob seleciona somente snapshots redundantes com mais de seis meses completos. Conserva a cópia atual e as duas mais recentes. Nunca seleciona o estado ativo, históricos, arquivos de transferência ou arquivos de formato desconhecido. Exclusões usam ETag. Uma falha de limpeza fica pendente para a próxima execução; não desfaz o backup confirmado. Arquivos históricos e cópias no Drive são mantidos permanentemente nesta versão.
 
-## Arquivamento semestral
+**A tarefa de produção não está ativa:** ela depende do deploy futuro, ainda não autorizado. No localhost, a API foi executada explicitamente para validação.
 
-Uma tarefa da própria aplicação na Vercel verifica quando completam seis meses desde o último arquivamento bem-sucedido. A rotina deve:
+## Configuração realizada
 
-1. Fazer snapshot completo anterior à mudança, privado e identificado por UUID e data.
-2. Separar meses encerrados antigos em arquivos JSON imutáveis. Guardar movimentações completas, IDs, datas, documentos, versões e exclusões.
-3. Criar balanços de abertura por cliente e módulo, com o mês de referência. Preservar a base validada do milho em outubro/2026, sem somar créditos históricos já desconsiderados pela regra atual. Sacarias e soja transferem quantidades em unidades.
-4. Gravar o arquivo histórico na Vercel e sua cópia JSON no Drive. Conferir leitura, contagem e checksum de ambas as cópias.
-5. Atualizar o manifesto e o documento ativo mediante escrita condicional. Só então retirar os movimentos arquivados do documento ativo. Uma falha anterior deixa o estado ativo intacto.
-6. Manter todos os arquivos históricos permanentes. Ao escolher um mês antigo, carregar e consultar o arquivo correspondente. Se for necessário consultar históricos offline, garantir o download local desses arquivos antes da limpeza local.
+- Google dedicado: `atiliomoinho@gmail.com`.
+- Projeto Google Cloud: `Moagem Atilio Backups`, `aerial-gadget-511601-p2`; Drive API e Sheets API ativadas. Nenhum plano pago foi contratado nesta configuração.
+- Cadastro OAuth: `Moagem Atílio — Backups`, em produção, solicitando somente `https://www.googleapis.com/auth/drive.file`. A autorização foi concluída e a conta confirmada. As credenciais de servidor ficam no `.env.local` ignorado. O modo em produção evita a expiração automática de sete dias dos tokens de teste; a autorização ainda pode ser revogada pelo responsável ou Google.
+- Blob privado: `moagem-atilio-dados`, conectado somente ao ambiente Development do projeto Vercel existente `moagem-atilio`. Nenhum deploy foi criado.
+- Base inicial mesclada no Blob: 119 movimentos e 5 clientes normalizados, provenientes do snapshot autorizado. Não substituiu uma base remota existente.
+- Pasta Google: https://drive.google.com/drive/folders/1VcSvXtyCbI9OdW3xpjYQGF8O8clw6dH6
+- Primeiro JSON completo conferido: https://drive.google.com/file/d/1MRSEWwi9a-tfD0XDhg96_ASU3BpPa6U2/view
+- Primeira planilha conferida: https://docs.google.com/spreadsheets/d/1YlOB-MDxYLGMms5u_BsaQJ8GsZvLxYGDXrA66inhAJg
+- Documentos legais: https://fdemarque.github.io/moagem-atilio/privacidade.html e https://fdemarque.github.io/moagem-atilio/termos.html. Publicados via GitHub Pages em `/docs`, sem publicar o PWA.
 
-O merge precisa reconhecer UUIDs já arquivados. Um aparelho que ficou meses offline não pode reintroduzir os mesmos registros como novos nem perder seus lançamentos pendentes. Uma edição de movimento arquivado deve atualizar sua versão e recalcular os créditos afetados. Tombstones devem permanecer disponíveis à sincronização; não eliminá-los arbitrariamente por idade.
+## Comandos locais
 
-A limpeza de snapshots redundantes é separada do arquivamento de movimentos: conservar o estado atual, snapshots recentes e os arquivos históricos verificados. Não apagar histórico permanente nem a única cópia recuperável. Qualquer política de retenção de snapshots deve ser explícita e testada.
+```powershell
+npm.cmd run build
+npm.cmd run local
+```
 
-## Google Drive e planilhas
+O servidor local lê `.env.local` e serve assets e APIs em `http://127.0.0.1:4173`. `scripts/setup-local-secrets.js` prepara segredos privados e guarda o código do responsável em `backups/acesso-aparelhos.txt`. Não enviar esse arquivo, o cliente OAuth ou `.env.local` ao GitHub.
 
-O usuário cria a conta Google separada e configura/autoriz­a a aplicação nessa conta. A conexão Google disponível ao Codex não é uma credencial de execução para o PWA. Nenhuma senha ou token deve ir ao GitHub, bundle do navegador ou conversa.
+Para uma nova autorização, `scripts/authorize-google.js` usa state, PKCE e retorno restrito a `127.0.0.1:4175/oauth/google/callback`. O responsável autoriza pela tela Google. `scripts/google-backup.js` verifica um JSON explícito no Drive; `scripts/seed-cloud.js` mescla o documento validado no Blob e confere sua leitura. Esses comandos nunca imprimem tokens.
 
-Na conta dedicada, a pasta `Moagem Atílio` terá:
+## Evidências de validação
 
-- Backups JSON completos, para recuperação exata, incluindo metadados, UUIDs, versões e comprovantes.
-- Arquivos históricos JSON por período, mantidos permanentemente.
-- Google Sheets de consulta, com abas de clientes, milho, sacarias, soja e balanços. Colunas explícitas incluem UUID, cliente, data, operação, quantidade, unidade, versão e estado de exclusão.
+- Testes de domínio/armazenamento/API/Google/arquivamento/retenção: 30 aprovados.
+- Chromium: módulos, CRUD, fotos, PDFs e JSON offline; cache completo, manifest, 360/390 px; sincronização entre dois aparelhos, escrita local durante resposta e envio após offline aprovados.
+- Conta Google e pastas conferidas no navegador; JSON por checksum e planilhas por leitura de todas as células enviados conferidos usando APIs reais.
+- API local real: login 200, sincronização 200, 119 movimentos, manutenção 200 e `verified: true`.
+- Duas manutenções concorrentes no Blob real concluíram com sucesso e preservaram exatamente os 119 registros.
+- Arquivamento semestral foi validado com relógio controlado: créditos iguais, histórico preservado, aparelho antigo sem duplicação, edição/exclusão arquivadas, falha do Drive e checksum bloqueando alteração. Nenhum registro real foi antecipadamente arquivado.
+- Dependências de produção sem vulnerabilidades reportadas no audit.
 
-Planilhas são cópias para leitura humana. O JSON é a cópia de recuperação, pois planilhas isoladas não representam todos os metadados e fotos. Textos provenientes de clientes devem ser escritos como valores literais (`RAW`), evitando interpretação como fórmulas.
+## Antes da publicação do PWA
 
-Autorização de Google deve ocorrer no servidor com permissão restrita aos arquivos da aplicação. Para uma conta Google pessoal dedicada, preparar OAuth e renovação dos tokens; não presumir que uma conta de serviço consegue armazenar arquivos no Drive pessoal sem configuração apropriada. Confirmar a estabilidade da autorização para operação automática antes de ativar a rotina semestral.
+1. Validar a interface local com o usuário e os dispositivos reais Android/iPhone. Chromium não comprova instalação no Safari nem preservação após um deploy que ainda não ocorreu.
+2. Obter e conferir um export final da versão antiga se houver novos lançamentos após o snapshot de 13/10/2026. Mesclar esse export no Blob; conservar a origem até conferir o resultado.
+3. Configurar as credenciais privadas no ambiente Production do projeto escolhido e conectar o mesmo Blob. O segundo projeto Vercel ligado ao repositório precisa ser tratado explicitamente antes do merge, para não publicar uma cópia sem configuração.
+4. Somente após aprovação de merge/deploy, ativar a versão e conferir os registros, créditos, offline e agendamento em produção. Os documentos legais já publicados não autorizam esse deploy.
 
-## Validação obrigatória da próxima etapa
+## Referências oficiais
 
-- Duas gravações simultâneas em aparelhos diferentes preservam ambas.
-- Sincronização interrompida pode ser repetida sem duplicação.
-- Dispositivo offline durante o arquivamento reencontra seus registros e envia lançamentos novos.
-- Créditos de cada cliente/módulo são iguais antes e depois do arquivamento.
-- Histórico anterior continua consultável e gera PDF.
-- Falha do Drive, Blob ou validação impede retirar movimentos do estado ativo.
-- Retenção nunca remove a única cópia de um período.
-- Endpoints de sincronização e agendamento rejeitam acesso sem autorização.
-- Nenhum dado real está incluído em assets públicos.
-
-## Referências
-
-- Vercel Blob privado: https://vercel.com/docs/vercel-blob/private-storage
-- Escritas condicionais do SDK: https://vercel.com/docs/vercel-blob/using-blob-sdk
-- Tarefas agendadas do aplicativo: https://vercel.com/docs/cron-jobs
-- Autorização de Drive: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
-- Escrita de valores no Sheets: https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update
+- https://vercel.com/docs/vercel-blob/using-blob-sdk
+- https://vercel.com/docs/vercel-blob/private-storage
+- https://vercel.com/docs/cron-jobs/usage-and-pricing
+- https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+- https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update
+- https://developers.google.com/identity/protocols/oauth2

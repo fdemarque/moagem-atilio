@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Wheat, PackageOpen, Bean, ChevronRight, ArrowLeft, ArrowDown, ArrowUp, Download, Share2, Trash2, Home } from 'lucide-react';
 import { initializeStorage, readDocument, addClient, deleteMovement, importDocument, jsonFile, downloadFile, listBackups, recoverBackup } from './lib/storage.js';
 import { MODULES, monthlyBalance, signed } from './lib/document.js';
 import MovementForm, { localToday } from './components/MovementForm';
 import Dialog from './components/Dialog';
+import { startSync } from './lib/sync.js';
 const titles = { milho: 'Milho', sacarias: 'Sacarias vazias', soja: 'Soja' };
 const units = { milho: 'kg', sacarias: 'unidades', soja: 'sacos' };
 const icons = { milho: Wheat, sacarias: PackageOpen, soja: Bean };
@@ -16,9 +17,13 @@ export default function App() {
   const [newName,setNewName] = useState(''), [busy,setBusy] = useState(false);
   const [install,setInstall] = useState(null), [offlineReady,setOfflineReady] = useState(false);
   const [maintenance,setMaintenance] = useState(false);
+  const [syncStatus,setSyncStatus] = useState({kind:'setup',text:'Dados salvos neste aparelho.'});
+  const [accessCode,setAccessCode] = useState('');
+  const sync = useRef(null);
   const [updateWorker,setUpdateWorker] = useState(null);
   useEffect(() => {
-    initializeStorage().then(setState).catch(err => setError(`Não foi possível abrir os dados: ${err.message}`));
+    let disposed=false;
+    initializeStorage().then(doc=>{setState(doc);if(!disposed)sync.current=startSync(setSyncStatus);}).catch(err => setError(`Não foi possível abrir os dados: ${err.message}`));
     const refresh = () => readDocument().then(doc => {if(doc) setState(doc);}).catch(err => setError(err.message));
     window.addEventListener('moagem-change',refresh); window.addEventListener('focus',refresh);
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('moagem-atilio') : null;
@@ -29,7 +34,7 @@ export default function App() {
     const readyHandler = () => setOfflineReady(true); window.addEventListener('moagem-offline-ready',readyHandler);
     const updateHandler = event => setUpdateWorker(event.detail); window.addEventListener('moagem-update-ready',updateHandler);
     if(import.meta.env.PROD) navigator.serviceWorker?.ready.then(() => setOfflineReady(true)).catch(() => {});
-    return () => { window.removeEventListener('moagem-change',refresh); window.removeEventListener('moagem-change',announce); window.removeEventListener('focus',refresh); window.removeEventListener('beforeinstallprompt',installHandler); window.removeEventListener('moagem-offline-ready',readyHandler); window.removeEventListener('moagem-update-ready',updateHandler); channel?.close(); };
+    return () => { disposed=true;sync.current?.stop();window.removeEventListener('moagem-change',refresh); window.removeEventListener('moagem-change',announce); window.removeEventListener('focus',refresh); window.removeEventListener('beforeinstallprompt',installHandler); window.removeEventListener('moagem-offline-ready',readyHandler); window.removeEventListener('moagem-update-ready',updateHandler); channel?.close(); };
   }, []);
   async function action(work, success) {
     setError(''); setBusy(true);
@@ -60,10 +65,12 @@ export default function App() {
         <div><p className="eyebrow">Bem-vindo ao moinho</p><h1>O que vamos registrar?</h1><p className="muted">Toque no produto para ver clientes e estoque.</p></div>
         <div className="module-list">{MODULES.map(key => { const Icon = icons[key]; return <button className={`module-card ${key}`} key={key} onClick={() => {setModule(key);setSearch('');}}><span className="module-icon"><Icon size={38} strokeWidth={2} /></span><span><strong>{titles[key]}</strong><small>{descriptions[key]}</small></span><ChevronRight aria-hidden="true" /></button>; })}</div>
         <section className="card stack"><h2>Relatório geral</h2><p className="muted">Milho, sacarias e soja em um único PDF.</p><label>Mês do relatório<input aria-label="Mês do relatório" type="month" value={month} onChange={e => {if(e.target.value) setMonth(e.target.value);}} /></label><button className="primary" disabled={busy} onClick={() => action(() => pdf(null,null))}><Download /> Baixar relatório geral</button><button className="secondary" disabled={busy} onClick={() => action(() => pdf(null,null,true))}><Share2 /> Compartilhar relatório geral</button></section>
-        <p className="muted">{rows.length} registros · {names.length} clientes<br />{offlineReady ? 'Funciona sem internet. Dados salvos neste aparelho.' : 'Preparando o aplicativo para funcionar sem internet…'}</p>
+        <p className="muted" role="status">{rows.length} registros · {names.length} clientes<br />{syncStatus.text}{offlineReady && <><br />Funciona sem internet.</>}</p>
+        {syncStatus.kind === 'access' && <button className="secondary" onClick={()=>{setAccessCode('');setModal({kind:'connect'});}}>Conectar este aparelho</button>}
+        {syncStatus.kind === 'error' && <button className="secondary" onClick={()=>sync.current?.retry()}>Tentar enviar a cópia novamente</button>}
         {install && <button className="primary" onClick={() => action(async () => {await install.prompt();await install.userChoice;setInstall(null);await navigator.storage?.persist?.();})}>Instalar aplicativo</button>}
         <button className="secondary" aria-expanded={maintenance} aria-controls="maintenance-tools" onClick={() => setMaintenance(value => !value)}>{maintenance ? 'Fechar configurações' : 'Configurações'}</button>
-        {maintenance && <section id="maintenance-tools" className="card stack"><h2>Manutenção</h2><p className="muted">Área do responsável pelo aplicativo. A sincronização com a Vercel e o backup no Drive ainda não estão configurados. As ferramentas abaixo permitem preservar os dados durante essa preparação.</p>
+        {maintenance && <section id="maintenance-tools" className="card stack"><h2>Manutenção</h2><p className="muted">Área do responsável pelo aplicativo. {syncStatus.text}. As cópias em arquivo também podem ser usadas para recuperação.</p>
           <button className="primary" disabled={busy} onClick={() => action(() => exportJson(),'Backup JSON baixado. Guarde uma cópia em outro lugar.')}><Download /> Exportar dados JSON</button>
           <button className="secondary" disabled={busy} onClick={() => action(() => exportJson(true))}><Share2 /> Compartilhar backup JSON</button>
           <label className="file-button secondary">Importar dados JSON<input type="file" accept=".json,application/json" disabled={busy} onChange={importFile} /></label>
@@ -71,6 +78,7 @@ export default function App() {
           <button className="secondary" disabled={busy} onClick={() => action(async () => {const backups=await listBackups();setModal({kind:'backups',backups:backups.reverse()});})}>Ver backups automáticos</button>
           {!rows.length && <p className="note">Os registros da versão antiga precisam ser importados com o backup completo antes de usar este aparelho.</p>}
           <p className="muted">Para instalar no iPhone: abra no Safari e toque em Compartilhar → Adicionar à Tela de Início. No Android, use “Instalar aplicativo” no menu do navegador.</p>
+          <p><a href="https://fdemarque.github.io/moagem-atilio/privacidade.html" target="_blank" rel="noopener noreferrer">Política de privacidade</a> · <a href="https://fdemarque.github.io/moagem-atilio/termos.html" target="_blank" rel="noopener noreferrer">Termos de uso</a></p>
         </section>}
       </> : <>
         <button className="back-button" onClick={client ? () => setClient(null) : goHome}><ArrowLeft /> {client ? 'Voltar aos clientes' : 'Trocar produto'}</button>
@@ -99,6 +107,7 @@ export default function App() {
         </>}
       </>}
     </main>
+    {modal?.kind === 'connect' && <Dialog title="Conectar este aparelho" onClose={()=>setModal(null)} busy={busy}><p>O responsável informa o código uma vez. Depois disso, as cópias são enviadas automaticamente.</p><form className="stack" onSubmit={e=>{e.preventDefault();action(async()=>{await sync.current.connect(accessCode);setAccessCode('');setModal(null);},'Aparelho conectado.');}}><label>Código de acesso<input type="password" value={accessCode} onChange={e=>setAccessCode(e.target.value)} required disabled={busy} autoComplete="current-password" /></label>{error && <p className="error" role="alert">{error}</p>}<button className="primary" disabled={busy}>Conectar</button></form></Dialog>}
     {modal?.kind === 'movement' && <MovementForm module={module} client={client} row={modal.row} type={modal.type} onClose={() => setModal(null)} onSaved={() => setNotice('Registro salvo neste aparelho.')} />}
     {modal?.kind === 'client' && <Dialog title="Novo cliente" onClose={() => setModal(null)} busy={busy}><form className="stack" onSubmit={e => {e.preventDefault();action(async () => {await addClient(newName);setClient(newName.trim());setModal(null);},'Cliente cadastrado.');}}><label>Nome do cliente<input value={newName} onChange={e => setNewName(e.target.value)} required disabled={busy} /></label>{error && <p role="alert" className="error">{error}</p>}<button className="primary" disabled={busy}>Cadastrar cliente</button></form></Dialog>}
     {modal?.kind === 'delete' && <Dialog title="Apagar este registro?" onClose={() => setModal(null)} busy={busy}><p>O crédito será recalculado. Uma cópia do estado atual será guardada no backup automático.</p><div className="two-buttons"><button className="secondary" disabled={busy} onClick={() => setModal(null)}>Cancelar</button><button className="danger" disabled={busy} onClick={() => action(async () => {await deleteMovement(modal.row.uuid);setModal(null);},'Registro apagado.')}>Sim, apagar</button></div>{error && <p role="alert" className="error">{error}</p>}</Dialog>}

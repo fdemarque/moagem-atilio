@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import { getRuntime } from '../server/runtime.js';
+const file=process.argv[2];
+if(!file)throw new Error('Informe o backup validado para mesclar, sem substituir registros existentes.');
+const incoming=JSON.parse(await fs.readFile(file,'utf8'));
+const {store}=getRuntime();
+const result=await store.sync(incoming);
+const checked=await store.read();
+if(JSON.stringify(checked.document)!==JSON.stringify(result.document))throw new Error('Conferência remota falhou.');
+console.log(JSON.stringify({verified:true,movements:result.document.payload.movimentacoes.length,clients:result.document.payload.clientes.length,archived:result.archived}));

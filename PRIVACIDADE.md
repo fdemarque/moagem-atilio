@@ -30,6 +30,8 @@ O acesso à cópia remota depende da autorização do aparelho pelo responsável
 
 O arquivamento semestral separa movimentos antigos em arquivos históricos, preservando os registros e os saldos. Arquivar não significa apagar. Antes de retirar movimentos do documento ativo na nuvem, o aplicativo confere as cópias. O histórico continua disponível para consulta e relatórios e permanece no aparelho para uso offline. Cópias de segurança e versões anteriores são conservadas para recuperação; não há descarte automático de histórico permanente.
 
+Snapshots redundantes na Vercel com mais de seis meses completos podem ser eliminados após conferir uma cópia recuperável. São conservados o snapshot atual, as duas cópias mais recentes e os arquivos dos últimos seis meses. Históricos e cópias do Drive não são eliminados por essa rotina.
+
 Excluir um movimento no aplicativo altera o estoque e registra sua exclusão para impedir que uma sincronização antiga o recrie. Versões anteriores podem permanecer nos backups. Para remover dados também dos backups, ou solicitar correção, acesso ou exclusão completa, entre em contato com o responsável, que verificará os registros afetados e as necessidades de conservação aplicáveis.
 
 ## Revogação e dúvidas
