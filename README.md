@@ -67,7 +67,7 @@ Foi preparado, com autorização do usuário, um snapshot privado em `backups/le
 2. Validar contagens, créditos por cliente e eventual presença de fotos. A base antiga não possui timestamp de edição; o export consolidado fornece a data de referência da migração.
 3. Mesclar o export final atualizado no Blob privado com `scripts/seed-cloud.js`, conferir o backup e configurar as credenciais de produção. Autorizar cada aparelho para receber e conciliar a base automaticamente. Localhost, os dois domínios Vercel e navegadores diferentes possuem armazenamentos separados. Nunca considerar o IndexedDB de localhost automaticamente migrado para produção.
 4. Conferir os 119 registros do snapshot (ou a contagem final atualizada), os créditos e os clientes na interface publicada. Manter a base antiga intacta até concluir a conferência em todos os aparelhos.
-5. Validar instalação e modo avião em Android/Chrome e iPhone/Safari reais. O teste Chromium local não comprova esses dois dispositivos reais nem a preservação após um deploy que ainda não ocorreu.
+5. Validar instalação e modo avião em Android/Chrome e iPhone/Safari reais. O teste Chromium local não comprova esses dois dispositivos reais nem a instalação nos dispositivos reais.
 
 Nenhum dado real é distribuído publicamente pelo app. Novos dispositivos recebem a base privada depois da conexão autorizada pelo responsável.
 
@@ -81,11 +81,11 @@ Uma nova versão aguarda a ação **Atualizar aplicativo**, desabilitada enquant
 
 Repositório existente: https://github.com/fdemarque/moagem-atilio.
 
-Foram identificados dois projetos Vercel conectados a esse mesmo repositório, ambos publicados pelo commit `805ce813dc4ce4883fe30af50877a36a9609f4c8` na branch `main`:
+Foram identificados dois projetos Vercel conectados a esse mesmo repositório, ambos publicados a partir da branch `main` e configurados para compartilhar a mesma base JSON privada:
 
 - `moagem-atilio`: https://moagem-atilio.vercel.app
 - `fdemarque-moagem-atilio`: https://fdemarque-moagem-atilio.vercel.app
 
-Esta evolução fica em `codex/local-first-tres-modulos`. `vercel.json` desativa deployments automáticos somente dessa branch, conforme https://vercel.com/docs/project-configuration/git-configuration. Também explicita o framework Vite, build e pasta `dist`. A publicação na main e na Vercel foi autorizada em 14/10/2026. A main anterior, commit `805ce813dc4ce4883fe30af50877a36a9609f4c8`, está preservada na branch `codex/backup-main-2026-10-14`.
+Esta evolução foi desenvolvida em `codex/local-first-tres-modulos` para publicação na main. `vercel.json` desativa deployments automáticos somente dessa branch, conforme https://vercel.com/docs/project-configuration/git-configuration. Também explicita o framework Vite, build e pasta `dist`. A publicação na main e na Vercel foi autorizada em 14/10/2026. A main anterior, commit `805ce813dc4ce4883fe30af50877a36a9609f4c8`, está preservada na branch `codex/backup-main-2026-10-14`.
 
 Os documentos públicos ficam no GitHub Pages, publicado somente a partir de `/docs` desta branch: [privacidade](https://fdemarque.github.io/moagem-atilio/privacidade.html) e [termos](https://fdemarque.github.io/moagem-atilio/termos.html). Isso não publica o PWA na Vercel. Para atualizar essas páginas, editar `PRIVACIDADE.md`/`TERMOS.md`, executar `node scripts/legal-pages.js` e publicar os arquivos gerados junto dos fontes.

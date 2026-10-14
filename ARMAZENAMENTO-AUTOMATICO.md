@@ -1,6 +1,6 @@
 # Armazenamento automático, backups e arquivamento
 
-Estado verificado em 14/10/2026. Implementação na branch `codex/local-first-tres-modulos`, sem merge nem deploy do PWA na Vercel.
+Estado verificado em 14/10/2026. Publicação na main e nos dois projetos Vercel autorizada pelo responsável. A versão anterior está preservada na branch `codex/backup-main-2026-10-14`.
 
 ## Funcionamento implementado
 
@@ -23,14 +23,14 @@ O manifesto registra créditos de abertura por cliente/módulo, calculados com a
 
 Após o backup conferido e a publicação condicional do manifesto, a retenção no Blob seleciona somente snapshots redundantes com mais de seis meses completos. Conserva a cópia atual e as duas mais recentes. Nunca seleciona o estado ativo, históricos, arquivos de transferência ou arquivos de formato desconhecido. Exclusões usam ETag. Uma falha de limpeza fica pendente para a próxima execução; não desfaz o backup confirmado. Arquivos históricos e cópias no Drive são mantidos permanentemente nesta versão.
 
-**A tarefa de produção não está ativa:** ela depende do deploy futuro, ainda não autorizado. No localhost, a API foi executada explicitamente para validação.
+A publicação de produção configura a tarefa diária nos dois projetos. A manutenção é idempotente e usa comparação condicional de versão: os dois endereços compartilham os mesmos arquivos privados. No localhost, a API também foi executada explicitamente para validação.
 
 ## Configuração realizada
 
 - Google dedicado: `atiliomoinho@gmail.com`.
 - Projeto Google Cloud: `Moagem Atilio Backups`, `aerial-gadget-511601-p2`; Drive API e Sheets API ativadas. Nenhum plano pago foi contratado nesta configuração.
 - Cadastro OAuth: `Moagem Atílio — Backups`, em produção, solicitando somente `https://www.googleapis.com/auth/drive.file`. A autorização foi concluída e a conta confirmada. As credenciais de servidor ficam no `.env.local` ignorado. O modo em produção evita a expiração automática de sete dias dos tokens de teste; a autorização ainda pode ser revogada pelo responsável ou Google.
-- Blob privado: `moagem-atilio-dados`, conectado somente ao ambiente Development do projeto Vercel existente `moagem-atilio`. Nenhum deploy foi criado.
+- Blob privado: `moagem-atilio-dados`, usado pelos dois projetos `moagem-atilio` e `fdemarque-moagem-atilio` com a mesma credencial privada no servidor. As credenciais de Google e acesso também foram configuradas nos dois ambientes Production.
 - Base inicial mesclada no Blob: 119 movimentos e 5 clientes normalizados, provenientes do snapshot autorizado. Não substituiu uma base remota existente.
 - Pasta Google: https://drive.google.com/drive/folders/1VcSvXtyCbI9OdW3xpjYQGF8O8clw6dH6
 - Primeiro JSON completo conferido: https://drive.google.com/file/d/1MRSEWwi9a-tfD0XDhg96_ASU3BpPa6U2/view
@@ -58,12 +58,13 @@ Para uma nova autorização, `scripts/authorize-google.js` usa state, PKCE e ret
 - Arquivamento semestral foi validado com relógio controlado: créditos iguais, histórico preservado, aparelho antigo sem duplicação, edição/exclusão arquivadas, falha do Drive e checksum bloqueando alteração. Nenhum registro real foi antecipadamente arquivado.
 - Dependências de produção sem vulnerabilidades reportadas no audit.
 
-## Antes da publicação do PWA
+## Publicação e conferência
 
-1. Validar a interface local com o usuário e os dispositivos reais Android/iPhone. Chromium não comprova instalação no Safari nem preservação após um deploy que ainda não ocorreu.
-2. Obter e conferir um export final da versão antiga se houver novos lançamentos após o snapshot de 13/10/2026. Mesclar esse export no Blob; conservar a origem até conferir o resultado.
-3. Configurar as credenciais privadas no ambiente Production do projeto escolhido e conectar o mesmo Blob. O segundo projeto Vercel ligado ao repositório precisa ser tratado explicitamente antes do merge, para não publicar uma cópia sem configuração.
-4. Somente após aprovação de merge/deploy, ativar a versão e conferir os registros, créditos, offline e agendamento em produção. Os documentos legais já publicados não autorizam esse deploy.
+O export final de 14/10/2026 foi conciliado sem alterações: 119 movimentações e 5 clientes normalizados. Os arquivos originais e backups foram preservados fora do Git. As configurações antigas de banco foram removidas dos dois projetos Vercel; nenhum banco antigo foi apagado.
+
+Cada aparelho deve ser conectado uma vez pelo responsável para receber a base compartilhada. O código fica no arquivo privado `backups/acesso-aparelhos.txt`. Localhost e os dois domínios possuem armazenamentos separados. Após conectar, as cópias são automáticas.
+
+A validação Chromium de funcionamento offline não substitui a conferência de instalação e modo avião em Android/Chrome e iPhone/Safari reais.
 
 ## Referências oficiais
 
