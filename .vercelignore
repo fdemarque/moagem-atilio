@@ -1,0 +1,8 @@
+backups/
+test-results/
+node_modules/
+.git/
+.agents/
+.env
+.env.*
+*.local
