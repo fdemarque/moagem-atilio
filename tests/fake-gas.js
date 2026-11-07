@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 
+const pending = { error: null };
+const flushPending = () => { const e = pending.error; pending.error = null; if (e) throw e; };
 const iterate = list => { let i = 0; return { hasNext: () => i < list.length, next: () => list[i++] }; };
 
 function fakeSheet(name, typed = false) {
@@ -18,7 +20,7 @@ function fakeSheet(name, typed = false) {
     getRange(row, col, numRows = 1, numCols = 1) {
       const range = {
         getRow: () => row, getColumn: () => col, getNumRows: () => numRows, getNumColumns: () => numCols, getSheet: () => sheet,
-        getValues: () => Array.from({ length: numRows }, (_, r) => Array.from({ length: numCols }, (_, c) => rows[row - 1 + r]?.[col - 1 + c] ?? '')),
+        getValues: () => flushPending() || Array.from({ length: numRows }, (_, r) => Array.from({ length: numCols }, (_, c) => rows[row - 1 + r]?.[col - 1 + c] ?? '')),
         getValue: () => range.getValues()[0][0],
         setValues(values) { values.forEach((v, r) => { rows[row - 1 + r] ||= []; v.forEach((x, c) => { rows[row - 1 + r][col - 1 + c] = x; }); }); return range; },
         setValue(v) { return range.setValues([[v]]); },
@@ -31,7 +33,8 @@ function fakeSheet(name, typed = false) {
       };
       for (const m of ['setNumberFormat', 'setNumberFormats', 'setFontWeight', 'setBackground', 'setBackgrounds', 'setNotes']) range[m] = () => range;
       // Tabela do Sheets: colunas com tipo recusam formato de número (mensagem real do Google).
-      if (typed) range.setNumberFormat = range.setNumberFormats = () => { throw new Error('Não é possível definir o formato de número das células em uma coluna com tipo.'); };
+      // O Sheets adia a operação: o erro só aparece no flush (ou na próxima leitura).
+      if (typed) range.setNumberFormat = range.setNumberFormats = () => { pending.error = new Error('Não é possível definir o formato de número das células em uma coluna com tipo.'); return range; };
       return range;
     },
   };
@@ -58,7 +61,7 @@ export function loadGas({ typed = false } = {}) {
   };
   const context = {
     console,
-    SpreadsheetApp: { getActive: () => spreadsheet, flush() {} },
+    SpreadsheetApp: { getActive: () => spreadsheet, flush: flushPending },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props.get(k) ?? null, setProperty: (k, v) => props.set(k, v) }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) },

@@ -6,6 +6,7 @@ var APP_URL = 'https://moagem-atilio.vercel.app';
 var PASTA_RAIZ = 'Moagem Atílio';
 var LIMITE_RESPOSTA = 20 * 1024 * 1024; // bytes aproximados de fotos por página
 var DIAS_BACKUP = 60;
+var VERSAO = '4'; // conferível em GET /exec
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Moagem')
@@ -73,7 +74,7 @@ function encontrarPasta(pai, nome) {
 // ---------- API ----------
 
 function doGet() {
-  return ContentService.createTextOutput('Moagem Atílio: serviço ativo.');
+  return ContentService.createTextOutput('Moagem Atílio: serviço ativo (versão ' + VERSAO + ').');
 }
 
 function doPost(e) {
@@ -150,21 +151,15 @@ function lerTabela(entidade) {
 
 function escreverLinha(sh, inicio, linhas) {
   if (!Array.isArray(linhas[0])) linhas = [linhas];
-  var faixa = sh.getRange(inicio, 1, linhas.length, linhas[0].length);
-  formatar(faixa, linhas.map(function () { return formatosLinha(sh); }));
-  faixa.setValues(linhas);
+  sh.getRange(inicio, 1, linhas.length, linhas[0].length).setValues(linhas);
 }
-// Abas convertidas em tabela do Sheets têm colunas tipadas, que recusam
-// formato de número. O tipo da coluna já define a exibição: segue sem formatar.
+// Formatação é cosmética e opcional. Abas convertidas em tabela do Sheets têm
+// colunas tipadas que recusam formato de número; o erro só aparece quando o
+// Sheets aplica as operações pendentes, por isso o flush fica dentro do try.
 function formatar(faixa, formato) {
-  try { if (Array.isArray(formato)) faixa.setNumberFormats(formato); else faixa.setNumberFormat(formato); }
-  catch (err) { if (!/tipo|type/i.test(err.message)) throw err; }
+  try { faixa.setNumberFormat(formato); SpreadsheetApp.flush(); }
+  catch (err) { console.warn('Formatação ignorada: ' + err.message); }
   return faixa;
-}
-
-function formatosLinha(sh) {
-  var entidade = sh.getName() === TABELAS.clientes.aba ? 'clientes' : 'movimentacoes';
-  return TABELAS[entidade].colunas.map(function (c) { return c[2] === 'numero' ? '0.###' : '@'; });
 }
 
 // Registros com revisão posterior ao cursor do aparelho, mais os devolvidos
@@ -245,8 +240,8 @@ function aoEditar(e) {
       var anterior = Date.parse(sh.getRange(linha, iAtual).getValue()) || 0;
       var carimbo = new Date(Math.max(agora.getTime(), anterior + 1)).toISOString();
       rev++;
-      formatar(sh.getRange(linha, iAtual), '@').setValue(carimbo);
-      if (sh.getRange(linha, iApagado).getValue()) formatar(sh.getRange(linha, iApagado), '@').setValue(carimbo);
+      sh.getRange(linha, iAtual).setValue(carimbo);
+      if (sh.getRange(linha, iApagado).getValue()) sh.getRange(linha, iApagado).setValue(carimbo);
       sh.getRange(linha, iRev).setValue(rev);
     }
     props.setProperty('REV', String(rev));
