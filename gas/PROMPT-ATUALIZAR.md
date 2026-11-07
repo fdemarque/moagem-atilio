@@ -3,7 +3,7 @@
 ```text
 Tarefa: atualizar o código do Apps Script da planilha "Moagem Atílio — Dados" (minha conta Google pessoal) e publicar na implantação existente, SEM criar implantação nova e SEM mexer nos dados ou na formatação da planilha (as abas são tabelas e devem continuar assim).
 
-1. Abra numa aba nova: https://raw.githubusercontent.com/fdemarque/moagem-atilio/fix/planilha-colunas-tipadas/gas/Codigo.js?v=4
+1. Abra numa aba nova: https://raw.githubusercontent.com/fdemarque/moagem-atilio/main/gas/Codigo.js?v=4
    Confira que o texto contém exatamente: VERSAO = '4'
    Se não contiver, recarregue com Ctrl+F5 até conter. Não continue sem isso.
    Clique no texto, Ctrl+A, Ctrl+C.

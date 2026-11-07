@@ -7,9 +7,9 @@ Tarefa: criar a planilha de dados do app Moagem Atílio na MINHA conta Google pe
 Não use a conta atiliomoinho@gmail.com. Antes de criar qualquer arquivo, confira no avatar do Google qual conta está ativa e me diga; se não for a minha conta pessoal, pare e me pergunte.
 
 Código-fonte (repositório público, só leitura):
-- Codigo:        https://raw.githubusercontent.com/fdemarque/moagem-atilio/feat/planilha-google/gas/Codigo.js
-- Regras:        https://raw.githubusercontent.com/fdemarque/moagem-atilio/feat/planilha-google/gas/Regras.js
-- appsscript:    https://raw.githubusercontent.com/fdemarque/moagem-atilio/feat/planilha-google/gas/appsscript.json
+- Codigo:        https://raw.githubusercontent.com/fdemarque/moagem-atilio/main/gas/Codigo.js
+- Regras:        https://raw.githubusercontent.com/fdemarque/moagem-atilio/main/gas/Regras.js
+- appsscript:    https://raw.githubusercontent.com/fdemarque/moagem-atilio/main/gas/appsscript.json
 
 Para copiar cada arquivo: abra o link numa aba nova, clique no texto, Ctrl+A, Ctrl+C. No editor do Apps Script, clique dentro do arquivo, Ctrl+A, Ctrl+V. Use sempre colar (nunca digitar o código), porque o editor completa parênteses ao digitar e corrompe o código.
 
