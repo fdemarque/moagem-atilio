@@ -25,7 +25,7 @@ Passos:
 9. Implantar → Nova implantação → engrenagem → "App da Web". Descrição: "v1". Executar como: Eu. Quem pode acessar: Qualquer pessoa. Clique em Implantar e copie a URL do App da Web (termina em /exec).
 10. Abra essa URL numa aba nova. Deve aparecer: "Moagem Atílio: serviço ativo." Se aparecer pedido de login ou erro, me informe o texto exato.
 11. Volte à planilha e recarregue a página. Deve existir o menu "Moagem" e as abas: Movimentações, Clientes, Saldos atuais, Resumo mensal, Registro. No Drive deve existir a pasta "Moagem Atílio" com "Comprovantes" e "Backups".
-12. Menu Moagem → "Link de conexão dos aparelhos". Não copie o código para o chat; apenas confirme que a janela abriu com um link e um código.
+12. Menu Moagem → "Link de conexão dos aparelhos". Quando pedir a URL do App da Web, cole a URL /exec do passo 9 (a mesma de Implantar → Gerenciar implantações). Não copie o código para o chat; apenas confirme que a janela abriu com um link e um código.
 13. No Apps Script, menu Acionadores (ícone de relógio): confira um acionador diário de "rotinaDiaria" e um "Ao editar" de "aoEditar".
 
 Ao terminar, me responda só com: conta usada, link da planilha, URL /exec, resultado do passo 10 e qualquer erro encontrado. Não altere nenhuma outra planilha ou arquivo.

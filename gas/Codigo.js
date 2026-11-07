@@ -11,6 +11,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('Moagem')
     .addItem('Atualizar saldos e verificar agora', 'rotinaDiaria')
     .addItem('Link de conexão dos aparelhos', 'mostrarLinkConexao')
+    .addItem('Trocar URL da implantação', 'trocarUrlImplantacao')
     .addItem('Instalar ou reparar', 'instalar')
     .addToUi();
 }
@@ -338,16 +339,31 @@ function registrar(acao, detalhe) {
 
 // ---------- conexão dos aparelhos ----------
 
-function codigoConexao() {
-  var url = ScriptApp.getService().getUrl();
-  if (!url) throw new Error('Implante o projeto como App da Web antes de gerar o link.');
-  url = url.replace(/\/dev$/, '/exec');
+// A URL vem de Implantar → Gerenciar implantações (App da Web, termina em /exec).
+// getService().getUrl() pode devolver a URL de teste (/dev), cujo ID é outro.
+var PADRAO_EXEC = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
+
+function urlImplantacao(perguntar) {
+  var props = PropertiesService.getScriptProperties(), url = props.getProperty('WEBAPP_URL');
+  if (url && PADRAO_EXEC.test(url) && !perguntar) return url;
+  var ui = SpreadsheetApp.getUi();
+  var resposta = ui.prompt('URL do App da Web', 'Cole a URL de Implantar → Gerenciar implantações → App da Web (termina em /exec):', ui.ButtonSet.OK_CANCEL);
+  if (resposta.getSelectedButton() !== ui.Button.OK) throw new Error('Conexão cancelada.');
+  url = resposta.getResponseText().trim();
+  if (!PADRAO_EXEC.test(url)) throw new Error('URL inválida. Ela começa com https://script.google.com/macros/s/ e termina em /exec.');
+  props.setProperty('WEBAPP_URL', url);
+  return url;
+}
+
+function codigoConexao(url) {
   var token = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
   return Utilities.base64EncodeWebSafe(JSON.stringify({ u: url, t: token })).replace(/=+$/, '');
 }
 
+function trocarUrlImplantacao() { urlImplantacao(true); mostrarLinkConexao(); }
+
 function mostrarLinkConexao() {
-  var codigo = codigoConexao(), link = APP_URL + '/#conectar=' + codigo;
+  var codigo = codigoConexao(urlImplantacao(false)), link = APP_URL + '/#conectar=' + codigo;
   var html = HtmlService.createHtmlOutput(
     '<p style="font:16px sans-serif">Abra este link uma vez em cada aparelho:</p>' +
     '<textarea readonly style="width:100%;height:90px;font:14px monospace">' + link + '</textarea>' +
