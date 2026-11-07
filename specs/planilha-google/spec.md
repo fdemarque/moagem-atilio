@@ -1,6 +1,6 @@
 # Planilha Google como fonte dos dados
 
-Status: em implementação (07/11/2026)
+Status: implementado na branch feat/planilha-google; aguarda criação da planilha e publicação (07/11/2026)
 
 ## Objetivo
 

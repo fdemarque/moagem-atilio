@@ -10,9 +10,9 @@ O aplicativo armazena nomes dos clientes, produto, datas, entradas e saídas, qu
 
 ## Onde os dados ficam
 
-Os registros são salvos no próprio aparelho para permitir o funcionamento sem internet. Na versão com sincronização configurada, uma cópia é armazenada em arquivos JSON privados no Vercel Blob, e backups são guardados na conta Google exclusiva do moinho, como arquivos JSON e planilhas Google Sheets. A configuração dessa versão é feita pelo responsável antes da publicação; a criação deste documento não ativa a sincronização em uma versão antiga.
+Os registros são salvos no próprio aparelho para permitir o funcionamento sem internet. Quando o aparelho é conectado pelo responsável, os registros são sincronizados com uma planilha Google Sheets privada na conta Google do responsável, por meio de um script dessa própria planilha (Google Apps Script). Fotos de comprovantes são guardadas como arquivos em uma pasta privada do Google Drive da mesma conta.
 
-O Vercel Blob e o Google Drive processam os arquivos para armazenamento e recuperação. As planilhas servem para consulta; o JSON completo preserva os registros, versões e comprovantes para recuperação. Os arquivos de estoque não são publicados junto com o código no GitHub.
+O Google processa a planilha e os arquivos para armazenamento e recuperação. A Vercel apenas hospeda o aplicativo e não recebe os registros. Os dados de estoque não são publicados junto com o código no GitHub.
 
 ## Permissão da conta Google
 
@@ -30,12 +30,12 @@ O acesso à cópia remota depende da autorização do aparelho pelo responsável
 
 O arquivamento semestral separa movimentos antigos em arquivos históricos, preservando os registros e os saldos. Arquivar não significa apagar. Antes de retirar movimentos do documento ativo na nuvem, o aplicativo confere as cópias. O histórico continua disponível para consulta e relatórios e permanece no aparelho para uso offline. Cópias de segurança e versões anteriores são conservadas para recuperação; não há descarte automático de histórico permanente.
 
-Snapshots redundantes na Vercel com mais de seis meses completos podem ser eliminados após conferir uma cópia recuperável. São conservados o snapshot atual, as duas cópias mais recentes e os arquivos dos últimos seis meses. Históricos e cópias do Drive não são eliminados por essa rotina.
+Uma rotina diária salva uma cópia da planilha na mesma conta Google. São mantidas as cópias dos últimos 60 dias e a do primeiro dia de cada mês.
 
 Excluir um movimento no aplicativo altera o estoque e registra sua exclusão para impedir que uma sincronização antiga o recrie. Versões anteriores podem permanecer nos backups. Para remover dados também dos backups, ou solicitar correção, acesso ou exclusão completa, entre em contato com o responsável, que verificará os registros afetados e as necessidades de conservação aplicáveis.
 
 ## Revogação e dúvidas
 
-O responsável pode revogar a autorização na página de [conexões da Conta Google](https://myaccount.google.com/connections). Isso interrompe os novos backups no Drive; não apaga automaticamente os arquivos já criados nem os registros locais. Para encerrar o uso e remover cópias existentes, contate **atiliomoinho@gmail.com**.
+O responsável pode revogar a autorização do script na página de [conexões da Conta Google](https://myaccount.google.com/connections) ou trocar o código de conexão. Isso interrompe a sincronização; não apaga a planilha nem os registros locais. Para encerrar o uso e remover cópias existentes, contate **atiliomoinho@gmail.com**.
 
 Esta política será atualizada caso a forma de tratar os dados mude. A data da versão aparece no início do documento.

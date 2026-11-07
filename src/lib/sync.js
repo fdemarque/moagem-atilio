@@ -35,7 +35,7 @@ export function pendingBatches(document, meta) {
 }
 
 const STATUS = {
-  setup: 'Salvo neste aparelho. Conecte à planilha em Configurações.',
+  setup: 'Salvo neste aparelho. Ainda não conectado à planilha.',
   offline: 'Salvo neste aparelho. Sem internet: envio para a planilha quando voltar.',
   sending: 'Salvo neste aparelho. Enviando para a planilha…',
   saved: 'Salvo neste aparelho e na planilha.',
@@ -82,8 +82,8 @@ export function startSync(onStatus, { fetchImpl = (...args) => fetch(...args), i
   }
   const changed = event => { if (!event?.detail?.remote) schedule(); };
   const online = () => schedule(0), offline = () => status('offline');
-  const visible = () => { if (document.visibilityState === 'visible') schedule(0); };
-  window.addEventListener('moagem-change', changed); window.addEventListener('online', online); window.addEventListener('offline', offline);
+  const visible = () => { if (globalThis.document?.visibilityState !== 'hidden') schedule(0); };
+  window.addEventListener('moagem-change', changed); window.addEventListener('online', online); window.addEventListener('offline', offline); window.addEventListener('focus', visible);
   globalThis.document?.addEventListener?.('visibilitychange', visible);
   schedule(0);
   return {
@@ -93,6 +93,6 @@ export function startSync(onStatus, { fetchImpl = (...args) => fetch(...args), i
       await call(connection, { acao: 'verificar' });
       saveConnection(connection); schedule(0);
     },
-    stop: () => { stopped = true; clearTimeout(timer); window.removeEventListener('moagem-change', changed); window.removeEventListener('online', online); window.removeEventListener('offline', offline); globalThis.document?.removeEventListener?.('visibilitychange', visible); },
+    stop: () => { stopped = true; clearTimeout(timer); window.removeEventListener('moagem-change', changed); window.removeEventListener('online', online); window.removeEventListener('offline', offline); window.removeEventListener('focus', visible); globalThis.document?.removeEventListener?.('visibilitychange', visible); },
   };
 }
