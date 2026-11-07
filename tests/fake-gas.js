@@ -71,7 +71,7 @@ export function loadGas() {
     spreadsheet.insertSheet(t.aba).getRange(1, 1, 1, t.colunas.length).setValues([t.colunas.map(c => c[1])]);
   }
   spreadsheet.insertSheet('Registro');
-  props.set('API_TOKEN', 'token-teste'); props.set('REV', '0');
+  props.set('API_TOKEN', 'token-teste-0123456789'); props.set('REV', '0');
   // Mesmo contrato HTTP do App da Web: corpo texto, resposta JSON.
   const post = body => JSON.parse(context.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).text);
   return { gas: context, sheets, props, files, post };

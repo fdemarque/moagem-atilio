@@ -44,7 +44,7 @@ test('sincronização por revisão, conflitos e fotos no Drive', () => {
   const { post, files, sheets } = loadGas();
   assert.equal(post({ token: 'errado', acao: 'sincronizar' }).codigo, 'acesso');
 
-  const a = post({ token: 'token-teste', acao: 'sincronizar', desde: 0, clientes: [{ uuid: id('c'), nome: 'Ana', updated_at: '2026-11-01T00:00:00.000Z' }], movimentacoes: [mov(1, { documentos: [FOTO] }), mov(2)] });
+  const a = post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: 0, clientes: [{ uuid: id('c'), nome: 'Ana', updated_at: '2026-11-01T00:00:00.000Z' }], movimentacoes: [mov(1, { documentos: [FOTO] }), mov(2)] });
   assert.equal(a.ok, true);
   assert.equal(a.cursor, 3);
   assert.equal(a.movimentacoes.length, 2);
@@ -53,33 +53,33 @@ test('sincronização por revisão, conflitos e fotos no Drive', () => {
   assert.match(sheets.get('Movimentações').rows().find(r => r[0] === id(1))[8], /^https:\/\/drive\.google\.com\/file\/d\/id1\/view$/);
 
   // Nada novo: resposta vazia com o mesmo cursor.
-  const b = post({ token: 'token-teste', acao: 'sincronizar', desde: a.cursor });
+  const b = post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: a.cursor });
   assert.deepEqual([b.movimentacoes.length, b.clientes.length, b.cursor], [0, 0, 3]);
 
   // Versão mais antiga é recusada e a planilha devolve a sua.
-  const c = post({ token: 'token-teste', acao: 'sincronizar', desde: 3, movimentacoes: [mov(2, { quantidade: 99, updated_at: '2026-11-02T00:00:00.000Z' })] });
+  const c = post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: 3, movimentacoes: [mov(2, { quantidade: 99, updated_at: '2026-11-02T00:00:00.000Z' })] });
   assert.equal(c.movimentacoes[0].quantidade, 10);
   assert.equal(c.cursor, 3);
 
   // Empate com exclusão: a exclusão vence.
-  const d = post({ token: 'token-teste', acao: 'sincronizar', desde: 3, movimentacoes: [mov(2, { deleted_at: '2026-11-03T10:00:00.000Z' })] });
+  const d = post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: 3, movimentacoes: [mov(2, { deleted_at: '2026-11-03T10:00:00.000Z' })] });
   assert.equal(d.movimentacoes[0].deleted_at, '2026-11-03T10:00:00.000Z');
   assert.equal(d.cursor, 4);
   assert.equal(sheets.get('Movimentações').rows().length, 3, 'atualiza a linha existente');
 
   // Registro inválido é recusado sem interromper os demais.
-  const e = post({ token: 'token-teste', acao: 'sincronizar', desde: 4, movimentacoes: [mov(3, { quantidade: -1 }), mov(4)] });
+  const e = post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: 4, movimentacoes: [mov(3, { quantidade: -1 }), mov(4)] });
   assert.equal(e.rejeitados.length, 1);
   assert.equal(e.movimentacoes.length, 1);
 });
 
 test('edição manual na planilha gera nova revisão', () => {
   const { post, gas, sheets } = loadGas();
-  post({ token: 'token-teste', acao: 'sincronizar', desde: 0, movimentacoes: [mov(1)] });
+  post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: 0, movimentacoes: [mov(1)] });
   const sh = sheets.get('Movimentações');
   sh.getRange(2, 6).setValue(15);
   gas.aoEditar({ range: sh.getRange(2, 6) });
-  const r = post({ token: 'token-teste', acao: 'sincronizar', desde: 1 });
+  const r = post({ token: 'token-teste-0123456789', acao: 'sincronizar', desde: 1 });
   assert.equal(r.movimentacoes[0].quantidade, 15);
   assert.ok(r.movimentacoes[0].updated_at > '2026-11-03T10:00:00.000Z');
 });
