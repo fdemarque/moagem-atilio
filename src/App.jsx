@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { addClient, deleteMovement, importDocument, jsonFile, downloadFile, listBackups, readDocument, recoverBackup } from './lib/storage.js';
 import { MODULES, currentCredit, monthlyBalance } from './lib/document.js';
 import { localToday } from './lib/format.js';
@@ -35,8 +35,10 @@ export default function App() {
   const data = useAppData({ onNotice: setNotice, onError: setError });
   const { state, syncStatus } = data;
 
-  // Messages belong to the screen where they happened.
-  useEffect(() => { setNotice(''); setError(''); }, [route.screen, route.module, route.client]);
+  // Messages belong to the screen where they happened, except a notice about
+  // the navigation itself (e.g. new client opens its screen).
+  const keepNotice = useRef(false);
+  useEffect(() => { if (!keepNotice.current) setNotice(''); keepNotice.current = false; setError(''); }, [route.screen, route.module, route.client]);
 
   async function action(work, success) {
     setError(''); setBusy(true);
@@ -68,7 +70,7 @@ export default function App() {
   if (state && route.screen === 'client') {
     const clientRows = view.byClient.get(route.client) || [];
     screen = <ClientScreen module={route.module} client={route.client} go={go} month={month} setMonth={setMonth} onReport={report} busy={busy}
-      credits={view.credits(route.client)} balance={monthlyBalance(clientRows, route.module, month)} openDialog={setDialog} />;
+      credits={Object.fromEntries(MODULES.map(m => [m, monthlyBalance(clientRows, m, month).closing]))} balance={monthlyBalance(clientRows, route.module, month)} openDialog={setDialog} />;
   }
   if (state && route.screen === 'settings') screen = <SettingsScreen go={go} syncStatus={syncStatus} busy={busy} offlineReady={data.offlineReady} summary={view.summary}
     onConnect={() => setDialog({ kind: 'connect' })} onRetry={() => data.sync.current?.retry()}
@@ -96,7 +98,7 @@ export default function App() {
       {!state && !data.loadError ? <p className="lead">Abrindo os dados deste aparelho…</p> : screen}
     </main>
     {dialog?.kind === 'movement' && <MovementForm module={route.module} client={route.client} row={dialog.row} type={dialog.type} onClose={closeDialog} onSaved={setNotice} />}
-    {dialog?.kind === 'client' && <ClientDialog {...dialogProps} onSave={name => action(async () => { const clean = await addClient(name); setDialog(null); go({ module: route.module, client: clean }); }, 'Cliente cadastrado.')} />}
+    {dialog?.kind === 'client' && <ClientDialog {...dialogProps} onSave={name => action(async () => { const clean = await addClient(name); setDialog(null); keepNotice.current = true; go({ module: route.module, client: clean }); }, 'Cliente cadastrado.')} />}
     {dialog?.kind === 'connect' && <ConnectDialog {...dialogProps} onConnect={code => action(async () => { await data.sync.current.connect(code); setDialog(null); }, 'Aparelho conectado à planilha.')} />}
     {dialog?.kind === 'delete' && <ConfirmDialog {...dialogProps} title="Apagar este registro?" danger confirmLabel="Sim, apagar" onConfirm={() => action(async () => { await deleteMovement(dialog.row.uuid); setDialog(null); }, 'Registro apagado.')}>O crédito será recalculado. A exclusão também vai para a planilha.</ConfirmDialog>}
     {dialog?.kind === 'photos' && <PhotosDialog row={dialog.row} onClose={closeDialog} />}

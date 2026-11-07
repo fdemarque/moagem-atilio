@@ -33,7 +33,7 @@ header { background: var(--surface); border-bottom: 2px solid var(--line-soft); 
 .brand small { display: block; color: var(--muted); font-size: .8rem; font-weight: 600; }
 .sync-badge { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--line); text-decoration: none; font-size: .85rem; font-weight: 750; color: var(--ink); background: var(--surface); text-align: right; }
 .sync-badge.saved { border-color: var(--brand); color: var(--brand-dark); }
-.sync-badge.error, .sync-badge.access, .sync-badge.setup { border-color: var(--warn-line); background: var(--warn-bg); }
+.sync-badge.error, .sync-badge.refused, .sync-badge.access, .sync-badge.setup { border-color: var(--warn-line); background: var(--warn-bg); }
 main { max-width: 720px; margin: auto; padding: 20px 16px max(48px, env(safe-area-inset-bottom)); }
 
 /* Botões */

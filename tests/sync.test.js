@@ -72,6 +72,26 @@ test('aparelho envia pendências, recebe alterações e retoma após falha', asy
   a.sync.stop();
 });
 
+test('registro recusado pela planilha continua pendente e é informado', async () => {
+  const server = loadGas();
+  const novo = await saveMovement({ ...fields, quantidade: 7, data_movimentacao: '2026-11-05' });
+  const uuid = novo.payload.movimentacoes.find(r => r.quantidade === 7).uuid;
+  const statuses = [];
+  let resolve; const done = new Promise(r => { resolve = r; });
+  // Planilha recusa este registro (simula divergência de validação).
+  const fetchImpl = async (_, init) => {
+    const body = JSON.parse(init.body);
+    body.movimentacoes = (body.movimentacoes || []).map(r => r.uuid === uuid ? { ...r, quantidade: -1 } : r);
+    return { json: async () => server.post(body) };
+  };
+  const sync = startSync(s => { statuses.push(s); if (s.kind === 'refused' || s.kind === 'saved') resolve(); }, { fetchImpl, interval: 3600000 });
+  await done;
+  sync.stop();
+  assert.equal(statuses.at(-1).kind, 'refused');
+  assert.match(statuses.at(-1).detail, /1 registro/);
+  assert.ok((await readSyncState()).meta.pending[`movimentacoes:${uuid}`], 'continua pendente');
+});
+
 test('código de conexão inválido é recusado sem salvar', async () => {
   const { parseConnectionCode } = await import('../src/lib/sync.js');
   assert.throws(() => parseConnectionCode('abc'), /inválido/);

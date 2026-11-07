@@ -22,6 +22,7 @@ npm.cmd run test:e2e    # Chromium: offline, abas por cliente, sync entre dois a
 - Código em `gas/` (`Codigo.js`, `Regras.js`, `appsscript.json`). Instalação guiada para o Claude no Chrome: [gas/PROMPT-EXTENSAO.md](gas/PROMPT-EXTENSAO.md).
 - Abas: **Movimentações** e **Clientes** (um registro por linha, com ID, `Atualizado em`, `Apagado em`, `Revisão`), **Saldos atuais**, **Resumo mensal** e **Registro**.
 - Editar uma célula direto na planilha gera nova revisão e chega aos aparelhos. Para apagar, preencha `Apagado em`. Não exclua linhas.
+- Movimentações guardam o nome do cliente. Renomear em **Clientes** não renomeia as movimentações: altere também a coluna `Cliente` delas, ou o cliente aparece separado.
 - Rotina diária às 06h: marca linhas inválidas (vermelho, com nota), recalcula saldos e resumo, ordena e salva `.xlsx` em `Drive/Moagem Atílio/Backups` (60 dias + dia 1 de cada mês).
 - Comprovantes viram arquivos em `Drive/Moagem Atílio/Comprovantes`; o app guarda uma cópia reduzida (≤1600 px) para uso offline.
 - Conexão de cada aparelho, uma vez: planilha → menu **Moagem → Link de conexão dos aparelhos**. Abrir o link no aparelho ou colar o código em **Configurações**. O código fica só no aparelho.

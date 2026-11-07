@@ -12,7 +12,7 @@ export default function SettingsScreen({ go, syncStatus, onConnect, onRetry, ins
     <section className="card stack" aria-labelledby="sheet-title">
       <h2 id="sheet-title">Planilha</h2>
       <p className="lead" role="status">{syncStatus.text}</p>
-      {syncStatus.detail && syncStatus.kind === 'error' && <p className="muted">Detalhe: {syncStatus.detail}</p>}
+      {syncStatus.detail && (syncStatus.kind === 'error' || syncStatus.kind === 'refused') && <p className="muted">Detalhe: {syncStatus.detail}</p>}
       <p className="muted">{summary}</p>
       {connected && syncStatus.kind !== 'access' && <Button icon={RefreshCw} disabled={busy} onClick={onRetry}>Enviar e atualizar agora</Button>}
       <Button variant={connected && syncStatus.kind !== 'access' ? 'secondary' : 'primary'} icon={Link2} onClick={onConnect}>{connected ? 'Trocar código de conexão' : 'Conectar este aparelho'}</Button>

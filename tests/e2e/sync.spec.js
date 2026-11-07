@@ -27,6 +27,7 @@ test('dois aparelhos conectados pelo link compartilham dados pela planilha', asy
   await a.getByLabel('Nome do cliente').fill('Ana Souza');
   await a.getByRole('button', { name: 'Cadastrar cliente' }).click();
   await expect(a.getByRole('heading', { name: 'Ana Souza' })).toBeVisible();
+  await expect(a.getByText('Cliente cadastrado.')).toBeVisible();
   await a.getByRole('button', { name: 'Entrada', exact: true }).click();
   await a.getByLabel('Quantidade de sacos').fill('12');
   await a.getByRole('button', { name: 'Salvar registro' }).click();

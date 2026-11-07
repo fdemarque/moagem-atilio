@@ -54,6 +54,10 @@ test('PWA offline: migração, módulos, abas por cliente, CRUD, anexos, relató
     await expect(page.locator('.credit strong')).toHaveText(`17 ${unit}`);
     await expect(page.getByRole('button', { name: new RegExp(`^${module}.*17 ${unit}`) })).toBeVisible();
     await page.getByRole('button', { name: 'Próximo mês' }).click(); await expect(page.locator('.credit strong')).toHaveText(`17 ${unit}`); await page.getByRole('button', { name: 'Mês anterior' }).click();
+    // Abas mostram o crédito do mês na tela, igual ao quadro grande.
+    await page.getByRole('button', { name: 'Mês anterior' }).click();
+    await expect(page.getByRole('button', { name: new RegExp(`^${module}.*0 ${unit}`) })).toBeVisible();
+    await page.getByRole('button', { name: 'Próximo mês' }).click();
     if (module === 'Soja') { await page.getByRole('button', { name: /Ver 1 foto/ }).click(); await expect(page.getByAltText('Comprovante 1')).toBeVisible(); await page.getByRole('button', { name: 'Fechar', exact: true }).click(); }
     await page.getByRole('button', { name: /^Saída de 3 .* Editar registro/ }).click(); await page.getByLabel(field).fill('4'); await page.getByRole('button', { name: 'Salvar registro' }).click();
     await expect(page.locator('.credit strong')).toHaveText(`16 ${unit}`);

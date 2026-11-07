@@ -6,6 +6,7 @@ const BADGES = {
   sending: [CloudUpload, 'Enviando…'],
   offline: [CloudOff, 'Sem internet'],
   error: [CloudAlert, 'Planilha sem resposta'],
+  refused: [CloudAlert, 'Registro recusado'],
   access: [CloudAlert, 'Conectar planilha'],
   setup: [CloudAlert, 'Conectar planilha'],
 };

@@ -41,6 +41,7 @@ const STATUS = {
   saved: 'Salvo neste aparelho e na planilha.',
   access: 'Salvo neste aparelho. O código de conexão foi recusado: conecte de novo.',
   error: 'Salvo neste aparelho. A planilha não respondeu; nova tentativa em breve.',
+  refused: 'Salvo neste aparelho. A planilha recusou registro(s); veja a aba Registro da planilha.',
 };
 
 export function startSync(onStatus, { fetchImpl = (...args) => fetch(...args), interval = 60000 } = {}) {
@@ -65,15 +66,19 @@ export function startSync(onStatus, { fetchImpl = (...args) => fetch(...args), i
       const { document, meta } = await readSyncState();
       const { batches, acks } = pendingBatches(document, meta);
       if (acks.flat().length) status('sending');
-      let cursor = meta.cursor, more = true;
+      let cursor = meta.cursor, more = true, rejected = 0;
       for (let i = 0; i < batches.length || more; i++) {
         const result = await call(connection, { acao: 'sincronizar', desde: cursor, ...(batches[i] || {}) });
-        await applyRemote(result, acks[i] || []);
+        // A refused record stays pending: it is never acknowledged as saved.
+        const refused = new Set((result.rejeitados || []).map(r => r.uuid));
+        rejected += refused.size;
+        await applyRemote(result, (acks[i] || []).filter(([k]) => !refused.has(k.split(':')[1])));
         cursor = result.cursor; more = result.mais;
-        if (result.rejeitados?.length) console.warn('Registros recusados pela planilha:', result.rejeitados);
+        if (refused.size) console.warn('Registros recusados pela planilha:', result.rejeitados);
       }
       retry = interval;
-      status('saved');
+      if (rejected) status('refused', `${rejected} registro(s) recusado(s) pela planilha.`);
+      else status('saved');
       schedule(again ? 0 : interval);
     } catch (error) {
       status(error.access ? 'access' : 'error', error.message);
