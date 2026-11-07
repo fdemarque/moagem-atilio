@@ -12,11 +12,14 @@ test('dois aparelhos conectados pelo link compartilham dados pela planilha', asy
     await context.route('https://script.google.com/**', route => down ? route.abort() : route.fulfill({ contentType: 'application/json', body: JSON.stringify(server.post(route.request().postData())) }));
   }
   const [a, b] = await Promise.all(contexts.map(c => c.newPage()));
+  await a.goto('/');
+  await expect(a.getByText(/Este aparelho ainda não tem registros/)).toBeVisible();
   for (const page of [a, b]) {
     await page.goto(`/#conectar=${code}`);
     await expect(page.getByText('Aparelho conectado à planilha.')).toBeVisible();
     await expect(page.getByRole('link', { name: /Planilha em dia/ })).toBeVisible();
   }
+  await expect(a.getByText(/Este aparelho ainda não tem registros/)).toHaveCount(0);
 
   // Aparelho A cadastra e registra; a planilha recebe.
   await a.goto('/#/soja');

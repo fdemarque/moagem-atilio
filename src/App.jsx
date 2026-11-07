@@ -90,6 +90,9 @@ export default function App() {
       {data.loadError && <Banner kind="error" action={<Button onClick={() => data.reload().catch(() => {})}>Tentar novamente</Button>}>{data.loadError}</Banner>}
       {error && !inDialog && <Banner kind="error" onDismiss={() => setError('')}>{error}</Banner>}
       {notice && <Banner kind="notice" onDismiss={() => setNotice('')}>{notice}</Banner>}
+      {/* Each browser keeps its own copy: an empty, unconnected one must say where the data is. */}
+      {state && !view.rows.length && !view.names.length && (syncStatus.kind === 'setup' || syncStatus.kind === 'access') && route.screen !== 'settings' &&
+        <Banner kind="note" action={<Button variant="primary" onClick={() => go({ screen: 'settings' })}>Conectar à planilha</Button>}>Este aparelho ainda não tem registros. Os dados ficam na planilha: conecte este aparelho para baixar todos.</Banner>}
       {!state && !data.loadError ? <p className="lead">Abrindo os dados deste aparelho…</p> : screen}
     </main>
     {dialog?.kind === 'movement' && <MovementForm module={route.module} client={route.client} row={dialog.row} type={dialog.type} onClose={closeDialog} onSaved={setNotice} />}

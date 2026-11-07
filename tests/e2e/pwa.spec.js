@@ -16,6 +16,7 @@ test('PWA offline: migração, módulos, abas por cliente, CRUD, anexos, relató
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Produtos' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Conectar planilha/ })).toBeVisible();
+  await expect(page.getByText('Este aparelho ainda não tem registros.', { exact: false })).toHaveCount(0); // tem cliente legado
   await importJson(page, fixture); await expect(page.getByText(/Importação concluída/)).toBeVisible();
   await expect(page.getByText(/Este aparelho já funciona sem internet/)).toBeVisible();
   await importJson(page, fixture); await expect(page.getByText(/0 registros novos e 0 atualizados/)).toBeVisible();
