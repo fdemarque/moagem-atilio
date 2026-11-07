@@ -83,3 +83,45 @@ test('edição manual na planilha gera nova revisão', () => {
   assert.equal(r.movimentacoes[0].quantidade, 15);
   assert.ok(r.movimentacoes[0].updated_at > '2026-11-03T10:00:00.000Z');
 });
+
+test('rotina diária: saldos, resumo, linhas inválidas, ordenação, backup e registro', () => {
+  const { post, gas, sheets, files } = loadGas();
+  const t = 'token-teste-0123456789';
+  post({ token: t, acao: 'sincronizar', desde: 0,
+    clientes: [{ uuid: id('c1'), nome: 'Bia', updated_at: '2026-11-01T00:00:00.000Z' }],
+    movimentacoes: [
+      mov(1, { data_movimentacao: '2026-10-02' }),
+      mov(2, { modulo: 'milho', tipo_sacaria: 'granel', quantidade: 2000, peso_kg: 2000, data_movimentacao: '2026-10-05' }),
+      mov(3, { modulo: 'milho', tipo_movimentacao: 'OUT', tipo_sacaria: 'pequena', quantidade: 4, peso_kg: 100, data_movimentacao: '2026-11-05' }),
+      mov(4, { deleted_at: '2026-11-03T10:00:00.000Z' }),
+    ] });
+  // Linha quebrada à mão: quantidade com texto.
+  const sh = sheets.get('Movimentações');
+  sh.rows().push(gas.registroParaLinha('movimentacoes', mov(5), 99).map((v, i) => i === 5 ? 'dez' : v));
+
+  gas.rotinaDiaria();
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const saldos = sheets.get('Saldos atuais').rows().slice(1);
+  assert.deepEqual(JSON.parse(JSON.stringify(saldos)), [['Ana', gas.creditoAtual([mov(2, { modulo: 'milho', tipo_sacaria: 'granel', quantidade: 2000, peso_kg: 2000, data_movimentacao: '2026-10-05' }), mov(3, { modulo: 'milho', tipo_movimentacao: 'OUT', tipo_sacaria: 'pequena', quantidade: 4, peso_kg: 100, data_movimentacao: '2026-11-05' })], 'milho', hoje), 0, 10], ['Bia', 0, 0, 0]]);
+  assert.equal(saldos[0][1], 1900, 'milho: 2000 kg - 4 sacos de 25 kg');
+  const resumo = sheets.get('Resumo mensal').rows().slice(1);
+  assert.ok(resumo.some(r => r[0] === '2026-11' && r[1] === 'Ana' && r[2] === 'milho' && r[3] === 2000 && r[6] === 1900));
+  const datas = sh.rows().slice(1).map(r => r[1]);
+  assert.deepEqual(datas, [...datas].sort().reverse(), 'ordenado por data, mais recente primeiro');
+  assert.ok([...files.values()].some(f => /^moagem-\d{4}-\d{2}-\d{2}\.xlsx$/.test(f.name)), 'backup salvo');
+  assert.match(String(sheets.get('Registro').rows()[1][2]), /1 linhas com problema/);
+});
+
+test('apagar pela planilha: preencher "Apagado em" vira exclusão válida nos aparelhos', () => {
+  const { post, gas, sheets } = loadGas();
+  const t = 'token-teste-0123456789';
+  post({ token: t, acao: 'sincronizar', desde: 0, movimentacoes: [mov(1)] });
+  const sh = sheets.get('Movimentações');
+  sh.getRange(2, 11).setValue('sim');
+  gas.aoEditar({ range: sh.getRange(2, 11) });
+  const r = post({ token: t, acao: 'sincronizar', desde: 1 }).movimentacoes[0];
+  assert.ok(r.deleted_at);
+  assert.equal(r.deleted_at, r.updated_at);
+  assert.equal(gas.validarRegistro('movimentacoes', r), '');
+});

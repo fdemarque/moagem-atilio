@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 
+const iterate = list => { let i = 0; return { hasNext: () => i < list.length, next: () => list[i++] }; };
+
 function fakeSheet(name) {
   let rows = [];
   const sheet = {
@@ -44,8 +46,13 @@ export function loadGas() {
   };
   const folder = {
     getFoldersByName: () => ({ hasNext: () => true, next: () => folder }),
-    getFilesByName: name => { const f = [...files.values()].find(x => x.name === name); return { hasNext: () => Boolean(f), next: () => f.file }; },
-    createFile: blob => { const id = `id${files.size + 1}`; const file = { getId: () => id, getBlob: () => blob }; files.set(id, { name: blob.name, file }); return file; },
+    getFilesByName: name => iterate([...files.values()].filter(x => x.name === name && !x.trashed).map(x => x.file)),
+    getFiles: () => iterate([...files.values()].filter(x => !x.trashed).map(x => x.file)),
+    createFile: blob => {
+      const id = `id${files.size + 1}`, entry = { name: blob.name, trashed: false, created: new Date() };
+      entry.file = { getId: () => id, getBlob: () => blob, getName: () => entry.name, getDateCreated: () => entry.created, setTrashed: v => { entry.trashed = v; } };
+      files.set(id, entry); return entry.file;
+    },
   };
   const context = {
     console,
@@ -54,7 +61,10 @@ export function loadGas() {
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) },
     DriveApp: { getRootFolder: () => folder, getFileById: id => files.get(id).file },
+    UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getBlob: () => ({ name: '', setName(n) { this.name = n; return this; } }) }) },
+    ScriptApp: { getOAuthToken: () => 'oauth' },
     Utilities: {
+      formatDate: (date, _tz, format) => { if (format !== 'yyyy-MM-dd') throw new Error(format); return date.toISOString().slice(0, 10); },
       DigestAlgorithm: { SHA_256: 'sha256' },
       computeDigest: (_, text) => [...createHash('sha256').update(text).digest()],
       base64EncodeWebSafe: v => Buffer.from(typeof v === 'string' ? v : v).toString('base64url'),
@@ -70,7 +80,7 @@ export function loadGas() {
     const t = context.TABELAS[entidade];
     spreadsheet.insertSheet(t.aba).getRange(1, 1, 1, t.colunas.length).setValues([t.colunas.map(c => c[1])]);
   }
-  spreadsheet.insertSheet('Registro');
+  for (const aba of ['Registro', 'Saldos atuais', 'Resumo mensal']) spreadsheet.insertSheet(aba).getRange(1, 1, 1, 3).setValues([['cabeçalho', '', '']]);
   props.set('API_TOKEN', 'token-teste-0123456789'); props.set('REV', '0');
   // Mesmo contrato HTTP do App da Web: corpo texto, resposta JSON.
   const post = body => JSON.parse(context.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).text);
