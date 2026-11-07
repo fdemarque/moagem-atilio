@@ -1,0 +1,22 @@
+project:
+  name: moagem-atilio
+  commands:
+    install: npm.cmd install
+    check: npm.cmd test
+    test: npm.cmd test
+    e2e: npm.cmd run test:e2e
+    build: npm.cmd run build
+  git_policy:
+    forbidden_owners: []
+    commit_allowed: true
+    push_allowed: branches   # main publica na Vercel: pedir autorização
+stack_docs:
+  entrypoint: .agents/shared/router.md
+  revision: 841f5f507a7a6221d60f7fa702510f961fbc778d
+profiles:
+  - base
+paths:
+  source: src
+  apps_script: gas
+  specs: specs
+  decisions: docs/decisions

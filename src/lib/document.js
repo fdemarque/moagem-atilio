@@ -7,29 +7,34 @@ export function emptyDocument() {
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const validDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v;
 function assert(ok, message) { if (!ok) throw new Error(message); }
+// Validates one record; throws with a message for the operator.
+export function validateRecord(entity, row) {
+  assert(row && uuidPattern.test(row.uuid), 'Identificador inválido no backup.');
+  assert(typeof row.updated_at === 'string' && Number.isFinite(Date.parse(row.updated_at)), 'Registro sem data de atualização válida.');
+  assert(row.deleted_at == null || (Number.isFinite(Date.parse(row.deleted_at)) && row.deleted_at === row.updated_at), 'Exclusão inválida.');
+  if (entity === 'clientes') { assert(typeof row.nome === 'string' && row.nome.trim().length > 0, 'Nome de cliente inválido.'); return row; }
+  assert(MODULES.includes(row.modulo), 'Módulo inválido.');
+  assert(typeof row.cliente === 'string' && row.cliente.trim().length > 0, 'Movimentação sem cliente.');
+  assert(['IN', 'OUT'].includes(row.tipo_movimentacao), 'Tipo de movimentação inválido.');
+  assert(typeof row.quantidade === 'number' && Number.isFinite(row.quantidade) && row.quantidade > 0, 'Quantidade inválida.');
+  assert(row.modulo === 'milho' && row.tipo_movimentacao === 'IN' || Number.isSafeInteger(row.quantidade), 'Informe unidades inteiras.');
+  assert(validDate(row.data_movimentacao), 'Data de movimentação inválida.');
+  assert(row.modulo !== 'milho' || ['granel', 'normal', 'pequena'].includes(row.tipo_sacaria), 'Tipo de saca inválido.');
+  assert(row.peso_kg == null || typeof row.peso_kg === 'number' && Number.isFinite(row.peso_kg) && row.peso_kg >= 0, 'Peso inválido.');
+  assert(Array.isArray(row.documentos) && row.documentos.every(x => typeof x === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(x)), 'Comprovante inválido ou remoto. Importe um backup com fotos disponíveis offline.');
+  return row;
+}
+export const ENTITIES = ['clientes', 'movimentacoes'];
 export function validateDocument(doc) {
   assert(doc?.app === 'moagem-atilio' && doc.schema_version === SCHEMA, 'Arquivo incompatível. Escolha um backup JSON do Moagem Atílio.');
   assert(typeof doc.last_updated === 'string' && Number.isFinite(Date.parse(doc.last_updated)), 'Data do backup inválida.');
   assert(Array.isArray(doc.payload?.clientes) && Array.isArray(doc.payload?.movimentacoes), 'Backup sem clientes ou movimentações.');
-  for (const entity of ['clientes', 'movimentacoes']) {
+  for (const entity of ENTITIES) {
     const seen = new Set();
     for (const row of doc.payload[entity]) {
-      assert(row && uuidPattern.test(row.uuid) && !seen.has(row.uuid), 'Identificador inválido ou repetido no backup.');
+      validateRecord(entity, row);
+      assert(!seen.has(row.uuid), 'Identificador repetido no backup.');
       seen.add(row.uuid);
-      assert(typeof row.updated_at === 'string' && Number.isFinite(Date.parse(row.updated_at)), 'Registro sem data de atualização válida.');
-      assert(row.deleted_at == null || (Number.isFinite(Date.parse(row.deleted_at)) && row.deleted_at === row.updated_at), 'Exclusão inválida.');
-      if (entity === 'clientes') assert(typeof row.nome === 'string' && row.nome.trim().length > 0, 'Nome de cliente inválido.');
-      else {
-        assert(MODULES.includes(row.modulo), 'Módulo inválido.');
-        assert(typeof row.cliente === 'string' && row.cliente.trim().length > 0, 'Movimentação sem cliente.');
-        assert(['IN', 'OUT'].includes(row.tipo_movimentacao), 'Tipo de movimentação inválido.');
-        assert(typeof row.quantidade === 'number' && Number.isFinite(row.quantidade) && row.quantidade > 0, 'Quantidade inválida.');
-        assert(row.modulo === 'milho' && row.tipo_movimentacao === 'IN' || Number.isSafeInteger(row.quantidade), 'Informe unidades inteiras.');
-        assert(validDate(row.data_movimentacao), 'Data de movimentação inválida.');
-        assert(row.modulo !== 'milho' || ['granel', 'normal', 'pequena'].includes(row.tipo_sacaria), 'Tipo de saca inválido.');
-        assert(row.peso_kg == null || typeof row.peso_kg === 'number' && Number.isFinite(row.peso_kg) && row.peso_kg >= 0, 'Peso inválido.');
-        assert(Array.isArray(row.documentos) && row.documentos.every(x => typeof x === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(x)), 'Comprovante inválido ou remoto. Importe um backup com fotos disponíveis offline.');
-      }
     }
   }
   return doc;
@@ -103,3 +108,11 @@ export function monthlyBalance(rows, module, month) {
   const output = movements.filter(r => r.tipo_movimentacao === 'OUT').reduce((s,r) => s + amount(r),0);
   return { movements, opening, input, output, closing: opening + input - output };
 }
+// Current credit: closing of the later of this month and the last record (gas/Regras.js: creditoAtual).
+export function currentCredit(rows, module, today) {
+  let month = today.slice(0, 7);
+  for (const r of rows) if (!r.deleted_at && r.modulo === module && r.data_movimentacao.slice(0, 7) > month) month = r.data_movimentacao.slice(0, 7);
+  return monthlyBalance(rows, module, month).closing;
+}
+export const UNITS = { milho: 'kg', sacarias: 'unidades', soja: 'sacos' };
+export const TITLES = { milho: 'Milho', sacarias: 'Sacarias vazias', soja: 'Soja' };

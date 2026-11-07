@@ -4,6 +4,9 @@ node_modules/
 .git/
 .vercel/
 .agents/
+gas/
+specs/
+tests/
 .env
 .env.*
 *.local

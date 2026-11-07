@@ -1,5 +1,6 @@
-import { emptyDocument, migrateLegacy, validateDocument, mergeDocuments, legacyUuid, now } from './document.js';
+import { emptyDocument, migrateLegacy, validateDocument, validateRecord, mergeDocuments, legacyUuid, now, ENTITIES } from './document.js';
 export const DB_NAME = 'moagem-atilio-local';
+const SYNC_KEY = 'sync';
 let connection;
 let initialization;
 function openDb() {
@@ -11,38 +12,90 @@ function openDb() {
     request.onblocked = () => reject(new Error('Feche outras abas do aplicativo e tente novamente.'));
   });
 }
+const key = (entity, uuid) => `${entity}:${uuid}`;
+// Without sync metadata (first run after the Sheets migration) every record is pending.
+function initialMeta(doc) {
+  const pending = {};
+  if (doc) for (const entity of ENTITIES) for (const row of doc.payload[entity]) pending[key(entity,row.uuid)] = row.updated_at;
+  return { cursor: 0, pending };
+}
+function readBoth(store, done) {
+  const state = store.get('state');
+  state.onsuccess = () => { const meta = store.get(SYNC_KEY); meta.onsuccess = () => done(state.result, meta.result); };
+}
 export async function readDocument() {
   const db = await openDb();
   return new Promise((resolve,reject) => {
-    const tx = db.transaction('documents'); const request = tx.objectStore('documents').get('state');
+    const request = db.transaction('documents').objectStore('documents').get('state');
     request.onsuccess = () => resolve(request.result ? validateDocument(request.result) : null);
     request.onerror = () => reject(request.error);
   });
 }
+export async function readSyncState() {
+  const db = await openDb();
+  return new Promise((resolve,reject) => {
+    const tx = db.transaction('documents');
+    readBoth(tx.objectStore('documents'), (doc, meta) => resolve({ document: doc ? validateDocument(doc) : null, meta: meta || initialMeta(doc) }));
+    tx.onerror = () => reject(tx.error);
+  });
+}
 // Each change reads the latest state and writes in the SAME IDB transaction.
-// Transactions are serialized across tabs; backup and mutation succeed or abort together.
-export async function changeDocument(transform, reason = null, source = null) {
+// Transactions are serialized across tabs; backup, document and sync metadata
+// succeed or abort together. Local changes mark records as pending upload;
+// remote changes (options.remote) advance the cursor and clear acknowledged keys.
+export async function changeDocument(transform, reason = null, source = null, options = {}) {
   const db = await openDb();
   return new Promise((resolve,reject) => {
     const tx = db.transaction(['documents','backups'], 'readwrite');
-    const store = tx.objectStore('documents'); const request = store.get('state');
-    let result; let failure; let written=false;
-    request.onsuccess = () => {
+    const store = tx.objectStore('documents');
+    let result; let failure; let written = false;
+    readBoth(store, (stored, storedMeta) => {
       try {
-        const previous = request.result || emptyDocument();
+        const previous = stored || emptyDocument();
         validateDocument(previous);
+        const meta = storedMeta || initialMeta(stored);
         result = transform(structuredClone(previous));
-        if(result === null) {result=previous;return;}
         if (result?.then) throw new Error('Alteração precisa ser síncrona.');
-        result.last_updated = now(); validateDocument(result);
-        if (reason) tx.objectStore('backups').add({ created_at: now(), reason, document: previous, source });
-        store.put(result, 'state');
-        written=true;
+        if (options.remote) {
+          meta.cursor = options.cursor ?? meta.cursor;
+          for (const [k, stamp] of options.acknowledge || []) if (meta.pending[k] === stamp) delete meta.pending[k];
+        }
+        if (result !== null) {
+          result.last_updated = now(); validateDocument(result);
+          if (!options.remote) {
+            for (const entity of ENTITIES) {
+              const before = new Map(previous.payload[entity].map(r => [r.uuid, r.updated_at]));
+              for (const row of result.payload[entity]) if (before.get(row.uuid) !== row.updated_at) meta.pending[key(entity,row.uuid)] = row.updated_at;
+            }
+          }
+          if (reason) tx.objectStore('backups').add({ created_at: now(), reason, document: previous, source });
+          store.put(result, 'state');
+          written = true;
+        } else result = previous;
+        store.put(meta, SYNC_KEY);
       } catch(error) { failure = error; tx.abort(); }
-    };
-    tx.oncomplete = () => { if(written)globalThis.dispatchEvent?.(new Event('moagem-change')); resolve(result); };
+    });
+    tx.oncomplete = () => { if (written) globalThis.dispatchEvent?.(new CustomEvent('moagem-change', { detail: { remote: Boolean(options.remote) } })); resolve(result); };
     tx.onabort = tx.onerror = () => reject(failure || new Error('Não foi possível salvar. Os dados anteriores foram mantidos. Verifique o espaço livre.'));
   });
+}
+// Server rows win when at least as new as the local copy; a newer local edit
+// stays and remains pending. Invalid rows are skipped, never written.
+export function applyRemote(response, acknowledge = []) {
+  let changed = 0;
+  return changeDocument(doc => {
+    for (const entity of ENTITIES) {
+      const index = new Map(doc.payload[entity].map((r,i) => [r.uuid, i]));
+      for (const row of response[entity] || []) {
+        try { validateRecord(entity, row); } catch { continue; }
+        const i = index.get(row.uuid), local = doc.payload[entity][i];
+        if (local && (Date.parse(local.updated_at) > Date.parse(row.updated_at) || JSON.stringify(local) === JSON.stringify(row))) continue;
+        if (local) doc.payload[entity][i] = row; else { index.set(row.uuid, doc.payload[entity].length); doc.payload[entity].push(row); }
+        changed++;
+      }
+    }
+    return changed ? doc : null;
+  }, null, null, { remote: true, cursor: response.cursor, acknowledge }).then(() => changed);
 }
 export function initializeStorage() {
   if (initialization) return initialization;
@@ -50,9 +103,9 @@ export function initializeStorage() {
     const existing = await readDocument();
     if (existing) return existing;
     const source = {};
-    for (const key of ['moagem_clientes_cadastrados','moagem_movimentacoes','moagem_estado']) {
-      const value = localStorage.getItem(key);
-      if (value !== null) source[key] = value;
+    for (const k of ['moagem_clientes_cadastrados','moagem_movimentacoes','moagem_estado']) {
+      const value = localStorage.getItem(k);
+      if (value !== null) source[k] = value;
     }
     // Keep raw bytes before parsing/converting, even when a legacy value is corrupt.
     const db = await openDb();
@@ -90,17 +143,25 @@ function nextStamp(previous) {
   return new Date(Math.max(Date.now(), Date.parse(previous?.updated_at || 0) + 1 || 0)).toISOString();
 }
 export function addClient(nome) {
-  const clean = nome.trim(); if (!clean) throw new Error('Informe o nome do cliente.');
+  const clean = nome.trim().replace(/\s+/g, ' '); if (!clean) throw new Error('Informe o nome do cliente.');
   return changeDocument(doc => {
-    if (doc.payload.clientes.some(c => c.nome.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR') && !c.deleted_at)) throw new Error('Este cliente já está cadastrado.');
-    doc.payload.clientes.push({ uuid: legacyUuid(`cliente:${clean}`), nome: clean, updated_at: now() }); return doc;
-  });
+    const same = c => c.nome.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR');
+    if (doc.payload.clientes.some(c => same(c) && !c.deleted_at)) throw new Error('Este cliente já está cadastrado.');
+    const uuid = legacyUuid(`cliente:${clean}`);
+    // A deleted client with the same deterministic ID is revived instead of duplicated.
+    const previous = doc.payload.clientes.find(c => c.uuid === uuid);
+    const row = { ...previous, uuid, nome: clean, updated_at: nextStamp(previous) };
+    delete row.deleted_at;
+    if (previous) doc.payload.clientes = doc.payload.clientes.map(c => c.uuid === uuid ? row : c);
+    else doc.payload.clientes.push(row);
+    return doc;
+  }).then(() => clean);
 }
 export function saveMovement(fields, uuid = null) {
   return changeDocument(doc => {
     const previous = uuid && doc.payload.movimentacoes.find(r => r.uuid === uuid);
     if (uuid && !previous) throw new Error('Registro não encontrado. Atualize a tela.');
-    if (previous?.deleted_at) throw new Error('Este registro foi apagado em outra aba.');
+    if (previous?.deleted_at) throw new Error('Este registro foi apagado em outro aparelho.');
     const row = { ...previous, ...fields, uuid: uuid || crypto.randomUUID(), updated_at: nextStamp(previous) };
     if (previous) doc.payload.movimentacoes = doc.payload.movimentacoes.map(r => r.uuid === uuid ? row : r);
     else doc.payload.movimentacoes.push(row);
@@ -119,7 +180,7 @@ export function deleteMovement(uuid) {
 export function recoverBackup(backup) {
   const incoming = migrateLegacy(backup.document || { legacy_storage: backup.source });
   return changeDocument(doc => {
-    for (const entity of ['clientes','movimentacoes']) {
+    for (const entity of ENTITIES) {
       for (const restored of incoming.payload[entity].filter(r => !r.deleted_at)) {
         const index = doc.payload[entity].findIndex(r => r.uuid === restored.uuid);
         const current = doc.payload[entity][index];

@@ -20,7 +20,7 @@ Uma falha de rede ou serviço pode atrasar o envio da cópia. O usuário deve ob
 
 ## Backups, histórico e conta Google
 
-Backups podem ser armazenados como JSON privado na Vercel e como JSON e planilhas na conta Google exclusiva do moinho. O arquivamento semestral conserva histórico e saldos e não equivale à exclusão definitiva. Planilhas são cópias de consulta; a recuperação completa usa o JSON.
+Os registros sincronizados ficam em uma planilha Google privada da conta do responsável, com cópia diária da planilha no Google Drive da mesma conta. Exclusões no aplicativo são lógicas: o registro permanece na planilha marcado como apagado.
 
 A conexão Google é opcional para o registro local e necessária para os backups automáticos no Drive. Somente o responsável deve conceder ou revogar essa autorização e administrar as credenciais. O cadastro OAuth e estes documentos não publicam uma nova versão do PWA nem ativam faturamento.
 
