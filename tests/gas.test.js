@@ -125,3 +125,17 @@ test('apagar pela planilha: preencher "Apagado em" vira exclusão válida nos ap
   assert.equal(r.deleted_at, r.updated_at);
   assert.equal(gas.validarRegistro('movimentacoes', r), '');
 });
+
+test('planilha com abas em formato de tabela (colunas tipadas) continua gravando', () => {
+  const { post, gas, sheets } = loadGas({ typed: true });
+  const t = 'token-teste-0123456789';
+  const a = post({ token: t, acao: 'sincronizar', desde: 0, movimentacoes: [mov(1), mov(2)] });
+  assert.equal(a.ok, true, a.erro);
+  const b = post({ token: t, acao: 'sincronizar', desde: a.cursor, movimentacoes: [mov(1, { quantidade: 12, updated_at: '2026-11-04T00:00:00.000Z' })] });
+  assert.equal(b.ok, true, b.erro);
+  assert.equal(b.movimentacoes[0].quantidade, 12);
+  const sh = sheets.get('Movimentações');
+  gas.aoEditar({ range: sh.getRange(2, 6) });
+  gas.rotinaDiaria();
+  assert.ok(sheets.get('Saldos atuais').rows().length > 1);
+});

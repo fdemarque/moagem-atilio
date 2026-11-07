@@ -25,7 +25,7 @@ function instalar() {
     var t = TABELAS[entidade];
     var sh = prepararAba(ss, t.aba, t.colunas.map(function (c) { return c[1]; }));
     t.colunas.forEach(function (c, i) {
-      if (c[2] !== 'numero') sh.getRange(1, i + 1, sh.getMaxRows(), 1).setNumberFormat('@');
+      if (c[2] !== 'numero') formatar(sh.getRange(1, i + 1, sh.getMaxRows(), 1), '@');
     });
   });
   prepararAba(ss, 'Saldos atuais', ['Cliente', NOMES_MODULO.milho, NOMES_MODULO.sacarias, NOMES_MODULO.soja]);
@@ -151,9 +151,17 @@ function lerTabela(entidade) {
 function escreverLinha(sh, inicio, linhas) {
   if (!Array.isArray(linhas[0])) linhas = [linhas];
   var faixa = sh.getRange(inicio, 1, linhas.length, linhas[0].length);
-  faixa.setNumberFormats(linhas.map(function () { return formatosLinha(sh); }));
+  formatar(faixa, linhas.map(function () { return formatosLinha(sh); }));
   faixa.setValues(linhas);
 }
+// Abas convertidas em tabela do Sheets têm colunas tipadas, que recusam
+// formato de número. O tipo da coluna já define a exibição: segue sem formatar.
+function formatar(faixa, formato) {
+  try { if (Array.isArray(formato)) faixa.setNumberFormats(formato); else faixa.setNumberFormat(formato); }
+  catch (err) { if (!/tipo|type/i.test(err.message)) throw err; }
+  return faixa;
+}
+
 function formatosLinha(sh) {
   var entidade = sh.getName() === TABELAS.clientes.aba ? 'clientes' : 'movimentacoes';
   return TABELAS[entidade].colunas.map(function (c) { return c[2] === 'numero' ? '0.###' : '@'; });
@@ -237,8 +245,8 @@ function aoEditar(e) {
       var anterior = Date.parse(sh.getRange(linha, iAtual).getValue()) || 0;
       var carimbo = new Date(Math.max(agora.getTime(), anterior + 1)).toISOString();
       rev++;
-      sh.getRange(linha, iAtual).setNumberFormat('@').setValue(carimbo);
-      if (sh.getRange(linha, iApagado).getValue()) sh.getRange(linha, iApagado).setNumberFormat('@').setValue(carimbo);
+      formatar(sh.getRange(linha, iAtual), '@').setValue(carimbo);
+      if (sh.getRange(linha, iApagado).getValue()) formatar(sh.getRange(linha, iApagado), '@').setValue(carimbo);
       sh.getRange(linha, iRev).setValue(rev);
     }
     props.setProperty('REV', String(rev));
@@ -274,8 +282,8 @@ function rotinaDiaria() {
 function reescrever(sh, linhas, colunas) {
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, colunas).clearContent();
   if (linhas.length) sh.getRange(2, 1, linhas.length, colunas).setValues(linhas);
-  sh.getRange(2, 2, Math.max(linhas.length, 1), colunas - 1).setNumberFormat('#,##0.###');
-  if (sh.getName() === 'Resumo mensal') sh.getRange(2, 1, Math.max(linhas.length, 1), 3).setNumberFormat('@');
+  formatar(sh.getRange(2, 2, Math.max(linhas.length, 1), colunas - 1), '#,##0.###');
+  if (sh.getName() === 'Resumo mensal') formatar(sh.getRange(2, 1, Math.max(linhas.length, 1), 3), '@');
 }
 
 // Pinta de vermelho as linhas inválidas (com nota explicando) e de cinza as apagadas.

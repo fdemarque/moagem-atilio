@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const iterate = list => { let i = 0; return { hasNext: () => i < list.length, next: () => list[i++] }; };
 
-function fakeSheet(name) {
+function fakeSheet(name, typed = false) {
   let rows = [];
   const sheet = {
     rows: () => rows,
@@ -30,17 +30,19 @@ function fakeSheet(name) {
         },
       };
       for (const m of ['setNumberFormat', 'setNumberFormats', 'setFontWeight', 'setBackground', 'setBackgrounds', 'setNotes']) range[m] = () => range;
+      // Tabela do Sheets: colunas com tipo recusam formato de número (mensagem real do Google).
+      if (typed) range.setNumberFormat = range.setNumberFormats = () => { throw new Error('Não é possível definir o formato de número das células em uma coluna com tipo.'); };
       return range;
     },
   };
   return sheet;
 }
 
-export function loadGas() {
+export function loadGas({ typed = false } = {}) {
   const sheets = new Map(), props = new Map(), files = new Map();
   const spreadsheet = {
     getSheetByName: n => sheets.get(n) || null,
-    insertSheet: n => { const s = fakeSheet(n); sheets.set(n, s); return s; },
+    insertSheet: n => { const s = fakeSheet(n, typed); sheets.set(n, s); return s; },
     getSheets: () => [...sheets.values()], deleteSheet() {}, getName: () => 'Moagem teste', getId: () => 'planilha',
     setSpreadsheetTimeZone() {}, getSpreadsheetTimeZone: () => 'America/Sao_Paulo',
   };
