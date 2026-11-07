@@ -1,6 +1,6 @@
 /* Baixa visão: texto base 19px, alvos ≥ 56px, contraste AA, foco grosso. */
 :root {
-  --ink: #14231a; --muted: #3f5246; --line: #9fb2a4; --line-soft: #c7d4c9;
+  --ink: #14231a; --muted: #3f5246; --line: #6f8576; --line-soft: #c7d4c9;
   --bg: #f4f7f3; --surface: #fff; --brand: #175f32; --brand-dark: #0f4524;
   --danger: #a11d22; --danger-dark: #7d1418; --focus: #1739b5;
   --ok-bg: #e5f4e6; --warn-bg: #fff3c7; --warn-line: #a98e3c; --err-bg: #ffecec;
@@ -67,7 +67,7 @@ textarea { font-family: ui-monospace, monospace; font-size: .9rem; resize: verti
 /* Cartões */
 .card { border: 2px solid var(--line-soft); background: var(--surface); border-radius: 18px; padding: 20px; }
 .module-list { display: grid; gap: 14px; }
-.module-card { display: flex; gap: 16px; align-items: center; min-height: 116px; border: 2px solid var(--line-soft); border-radius: 18px; background: var(--surface); padding: 18px; color: var(--ink); text-decoration: none; }
+.module-card { display: flex; gap: 16px; align-items: center; min-height: 116px; border: 2px solid var(--line); border-radius: 18px; background: var(--surface); padding: 18px; color: var(--ink); text-decoration: none; }
 .module-card > span:nth-child(2) { flex: 1; min-width: 0; }
 .module-card strong { display: block; font-size: 1.55rem; line-height: 1.2; font-weight: 800; }
 .module-card small { display: block; color: var(--muted); margin-top: 6px; }
@@ -86,7 +86,7 @@ textarea { font-family: ui-monospace, monospace; font-size: .9rem; resize: verti
 .module-tab:not(.active):hover { border-color: var(--brand); }
 
 .client-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.client-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 96px; padding: 18px; background: var(--surface); border: 2px solid var(--line-soft); border-radius: 15px; color: var(--ink); text-decoration: none; }
+.client-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 96px; padding: 18px; background: var(--surface); border: 2px solid var(--line); border-radius: 15px; color: var(--ink); text-decoration: none; }
 .client-card strong { display: block; font-size: 1.35rem; font-weight: 800; overflow-wrap: anywhere; }
 .client-card small { display: block; margin-top: 6px; font-size: 1rem; color: var(--muted); }
 
@@ -132,4 +132,6 @@ textarea { font-family: ui-monospace, monospace; font-size: .9rem; resize: verti
   .two-buttons > * { padding: 12px 8px; }
   .brand small { display: none; }
   .sync-badge span { font-size: .8rem; }
+  .month-controls { grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 6px; }
+  .month-controls input { padding: 8px 6px; font-size: .95rem; }
 }

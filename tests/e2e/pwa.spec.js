@@ -23,6 +23,12 @@ test('PWA offline: migração, módulos, abas por cliente, CRUD, anexos, relató
   await importJson(page, '{corrompido'); await expect(page.getByRole('alert')).toContainText('corrompido');
 
   await page.getByRole('link', { name: /Moagem Atílio/ }).click();
+  // Busca na tela inicial abre o cliente no produto do último registro.
+  await page.getByLabel('Nome do cliente').fill('preserv');
+  await page.getByRole('link', { name: /Cliente preservado.*Milho: 1\.000 kg/ }).click();
+  await expect(page.getByRole('heading', { name: 'Cliente preservado' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Milho/ })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('link', { name: /Moagem Atílio/ }).click();
   await page.getByRole('link', { name: /^Milho/ }).click();
   await expect(page.getByRole('link', { name: /Nome local antigo/ })).toBeVisible();
   await page.getByRole('link', { name: /Cliente preservado/ }).click();

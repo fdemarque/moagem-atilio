@@ -60,11 +60,14 @@ export default function App() {
     const byClient = new Map(names.map(n => [n, []]));
     for (const r of rows) byClient.get(r.cliente).push(r);
     const credits = name => Object.fromEntries(MODULES.map(m => [m, currentCredit(byClient.get(name) || [], m, today)]));
-    return { rows, names, byClient, credits, summary: `${rows.length} registros · ${names.length} clientes neste aparelho.` };
+    // Product of the latest record opens first when coming from the home search.
+    const lastModule = name => [...(byClient.get(name) || [])].sort((a, b) => b.data_movimentacao.localeCompare(a.data_movimentacao))[0]?.modulo || MODULES[0];
+    return { rows, names, byClient, credits, lastModule, summary: `${rows.length} registros · ${names.length} clientes neste aparelho.` };
   }, [state]);
 
   let screen = null;
-  if (state && route.screen === 'home') screen = <HomeScreen month={month} setMonth={setMonth} onReport={report} busy={busy} summary={view.summary} />;
+  if (state && route.screen === 'home') screen = <HomeScreen month={month} setMonth={setMonth} onReport={report} busy={busy} summary={view.summary}
+    clients={view.names.map(name => ({ name, credits: view.credits(name), module: view.lastModule(name) }))} />;
   if (state && route.screen === 'clients') screen = <ClientListScreen module={route.module} go={go} month={month} setMonth={setMonth} onReport={report} busy={busy}
     clients={view.names.map(name => ({ name, credit: view.credits(name)[route.module] }))} onNewClient={() => setDialog({ kind: 'client' })} />;
   if (state && route.screen === 'client') {
