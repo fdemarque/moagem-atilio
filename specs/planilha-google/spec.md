@@ -1,6 +1,6 @@
 # Planilha Google como fonte dos dados
 
-Status: implementado na branch feat/planilha-google; aguarda criação da planilha e publicação (07/11/2026)
+Status: publicado em 07/11/2026. Planilha conferida: 243 movimentações e 7 clientes idênticos ao Blob, 18 créditos iguais.
 
 ## Objetivo
 
