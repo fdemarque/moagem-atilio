@@ -30,6 +30,10 @@ export default function ClientScreen({ module, client, credits, balance, month, 
         onPhotos={() => openDialog({ kind: 'photos', row })} />)}
       {!balance.movements.length && <Banner>Nenhum registro neste mês. Use Entrada ou Saída para registrar.</Banner>}
     </section>
-    <ReportButtons label="PDF do cliente" busy={busy} onReport={share => onReport(module, client, share)} />
+    <section className="card stack" aria-labelledby="client-report">
+      <h2 id="client-report">PDF do cliente</h2>
+      <p className="muted">Milho, sacarias e soja de {client} no mês escolhido acima.</p>
+      <ReportButtons label="PDF do cliente" busy={busy} onReport={share => onReport(null, client, share)} />
+    </section>
   </>;
 }
